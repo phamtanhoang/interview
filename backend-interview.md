@@ -89,14 +89,6 @@ console.log('B');                                // đồng bộ
 
 </details>
 
-<details>
-<summary><b>1.5 Microtask vs Macrotask?</b></summary>
-
-- **Microtask** (`process.nextTick`, `Promise`): ưu tiên cao, chạy **hết** sau mỗi tác vụ đồng bộ và sau mỗi macrotask.
-- **Macrotask** (`setTimeout`, `setInterval`, `setImmediate`, I/O): chạy theo các pha của event loop, mỗi vòng một (vài) cái.
-
-</details>
-
 ---
 
 ## 2. NestJS Architecture & Dependency Injection
@@ -131,14 +123,6 @@ constructor(private readonly usersService: UsersService) {}
 </details>
 
 <details>
-<summary><b>2.4 Vì sao phải khai báo provider trong mảng <code>providers</code>?</b></summary>
-
-- `providers: [...]` là động tác **đăng ký với IoC Container**.
-- Không đăng ký → container không có instance → không inject được.
-- Lỗi điển hình: `Nest can't resolve dependencies of ...` (phổ biến nhất với người mới).
-</details>
-
-<details>
 <summary><b>2.5 Module encapsulation: làm sao dùng provider của module khác?</b></summary>
 
 - Provider chỉ "sống" trong module khai báo nó.
@@ -152,14 +136,6 @@ constructor(private readonly usersService: UsersService) {}
 - Mặc định **Singleton** (`DEFAULT`): tạo **một lần**, dùng chung toàn app.
 - `REQUEST`: mỗi request một instance.
 - `TRANSIENT`: mỗi nơi inject một instance.
-</details>
-
-<details>
-<summary><b>2.7 NestJS biết kiểu dữ liệu để inject bằng cách nào?</b></summary>
-
-- Nhờ **decorator metadata** + thư viện `reflect-metadata`.
-- Cần bật `emitDecoratorMetadata: true` và `experimentalDecorators: true` trong `tsconfig.json`.
-- TypeScript "phát" thông tin kiểu tham số constructor để Nest resolve đúng provider.
 </details>
 
 ---
@@ -214,15 +190,6 @@ TypeOrmModule.forRootAsync({
 ## 4. Database, TypeORM & Entities
 
 <details>
-<summary><b>4.1 Entity là gì?</b></summary>
-
-- Class TypeScript gắn decorator để ánh xạ tới một **bảng** DB.
-- Quy tắc: 1 class → 1 bảng, 1 property → 1 cột, 1 instance → 1 dòng.
-- TypeORM đọc decorator qua `reflect-metadata` để suy ra schema.
-
-</details>
-
-<details>
 <summary><b>4.2 Active Record vs Data Mapper? NestJS dùng cái nào?</b></summary>
 
 - **Active Record**: entity tự lưu (`user.save()`), logic nằm trên model.
@@ -258,28 +225,10 @@ TypeOrmModule.forRootAsync({
 </details>
 
 <details>
-<summary><b>4.6 <code>@CreateDateColumn</code>/<code>@UpdateDateColumn</code> khác cột Date thường?</b></summary>
-
-- TypeORM **tự** quản lý giá trị, không cần gán tay.
-- `createdAt`: set lúc INSERT.
-- `updatedAt`: tự cập nhật mỗi lần `save()`.
-
-</details>
-
-<details>
 <summary><b>4.7 Cột enum trong Postgres có gì đặc biệt?</b></summary>
 
 - Postgres tạo một **kiểu enum riêng** (vd `users_role_enum`).
 - Thêm/bớt giá trị enum sau này thường phải qua **migration** (không dễ như varchar).
-
-</details>
-
-<details>
-<summary><b>4.8 Repository pattern là gì?</b></summary>
-
-- Lớp trừu tượng cho việc truy cập dữ liệu.
-- Inject `Repository<User>` và gọi `find/save/...` thay vì viết SQL thô.
-- Lợi: dễ thay thế, dễ **mock** khi test.
 
 </details>
 
@@ -366,17 +315,6 @@ Ví dụ: `PartialType(CreateUserDto)`.
 </details>
 
 <details>
-<summary><b>5.5 Built-in pipes (<code>ParseUUIDPipe</code>, <code>ParseIntPipe</code>) — dùng khi nào?</b></summary>
-
-- Pipe dựng sẵn để **validate & ép kiểu tham số** (param/query) trước handler.
-- Sai định dạng → **400 Bad Request** sạch sẽ.
-- Họ hàng: `ParseIntPipe`, `ParseBoolPipe`, `ParseEnumPipe`.
-
-Ví dụ: `@Param('id', ParseUUIDPipe)` đảm bảo `id` là UUID hợp lệ.
-
-</details>
-
-<details>
 <summary><b>5.6 Vì sao truyền id sai định dạng lại ra 500 thay vì 404?</b></summary>
 
 - Param sai kiểu cột (chuỗi không phải UUID vào cột `uuid`) → truy vấn **vỡ ngay ở tầng DB** (`invalid input syntax for type uuid`) → 500.
@@ -390,31 +328,11 @@ Ví dụ: `@Param('id', ParseUUIDPipe)` đảm bảo `id` là UUID hợp lệ.
 ## 6. REST API & Controllers
 
 <details>
-<summary><b>6.1 Các decorator routing cơ bản?</b></summary>
-
-- `@Controller('users')`: đặt tiền tố (prefix) route.
-- `@Get()`, `@Post()`, `@Patch(':id')`, `@Delete(':id')`: ứng với HTTP method.
-- `@Body()`: lấy request body.
-- `@Param('id')`: lấy param trên URL; `@Query()`: lấy query string.
-
-</details>
-
-<details>
 <summary><b>6.2 PUT vs PATCH?</b></summary>
 
 - **PUT**: thay **toàn bộ** resource (gửi đủ mọi field).
 - **PATCH**: cập nhật **một phần** (chỉ field cần đổi).
 - Trong Nest thường dùng PATCH + `PartialType` cho DTO.
-
-</details>
-
-<details>
-<summary><b>6.3 Các HTTP exception dựng sẵn của Nest?</b></summary>
-
-- `NotFoundException` (404), `BadRequestException` (400).
-- `UnauthorizedException` (401), `ForbiddenException` (403), `ConflictException` (409)...
-- Ném ra là Nest tự trả status + JSON tương ứng.
-- Xoá thành công thường trả `204 No Content` (dùng `@HttpCode(204)`).
 
 </details>
 
@@ -447,23 +365,6 @@ Ví dụ: `@Param('id', ParseUUIDPipe)` đảm bảo `id` là UUID hợp lệ.
 - bcrypt **có salt** (chống rainbow table) và **chậm có chủ đích** (cost factor → chống brute-force).
 - MD5/SHA quá nhanh → không hợp cho mật khẩu.
 - Lựa chọn khác: `argon2`.
-
-</details>
-
-<details>
-<summary><b>7.3 Salt là gì?</b></summary>
-
-- Chuỗi ngẫu nhiên thêm vào mỗi mật khẩu trước khi hash.
-- 2 người cùng mật khẩu vẫn ra 2 hash khác nhau → vô hiệu hoá rainbow table.
-- bcrypt tự sinh & nhúng salt vào chuỗi hash.
-
-</details>
-
-<details>
-<summary><b>7.4 Khi login có "giải mã" mật khẩu không?</b></summary>
-
-- Không — hash là một chiều.
-- Dùng `bcrypt.compare(plainNhập, hashTrongDB)`: nó hash lại mật khẩu nhập (với salt lấy từ hash) rồi so khớp.
 
 </details>
 
@@ -518,22 +419,6 @@ getProfile(@CurrentUser() user) { return user; }
 </details>
 
 <details>
-<summary><b>7.10 <code>validate()</code> trong strategy trả gì? Nó đi đâu?</b></summary>
-
-- Passport gọi `validate(payload)` **sau khi** token đã verify (chữ ký đúng + còn hạn).
-- Giá trị `validate` **return** được Nest gắn vào **`request.user`**.
-- Handler và decorator (`@CurrentUser()`, `@Req()`) lấy ra dùng.
-
-```ts
-validate(payload: JwtPayload) {
-  return { id: payload.sub, email: payload.email, role: payload.role };
-  // => request.user = { id, email, role }
-}
-```
-
-</details>
-
-<details>
 <summary><b>7.11 Guard khác Middleware thế nào?</b></summary>
 
 - Guard biết **ngữ cảnh Nest** (`ExecutionContext` — handler/class, metadata) → hợp phân quyền theo route/role.
@@ -547,14 +432,6 @@ validate(payload: JwtPayload) {
 - Với `ignoreExpiration: false`, Passport tự trả **401** khi token quá hạn (`exp`).
 - Client phải đăng nhập lại.
 - Hoặc dùng **refresh token** (access token ngắn hạn + refresh token dài hạn) để cấp lại mà không bắt login.
-
-</details>
-
-<details>
-<summary><b>7.13 <code>JwtModule.registerAsync</code> vs <code>register</code>?</b></summary>
-
-- `register`: cấu hình tĩnh.
-- `registerAsync`: khi cần inject (vd lấy `secret`/`expiresIn` từ `ConfigService` qua `useFactory`/`inject`).
 
 </details>
 
@@ -590,14 +467,6 @@ export class RolesGuard implements CanActivate {
   }
 }
 ```
-
-</details>
-
-<details>
-<summary><b>7.16 <code>Reflector</code> là gì?</b></summary>
-
-- Tiện ích NestJS để **đọc metadata** mà decorator (`@Roles`, `@SetMetadata`) gắn lên handler/class.
-- Method hay dùng: `get`, `getAllAndOverride` (đọc cả handler lẫn class, method ghi đè class), `getAllAndMerge`.
 
 </details>
 
@@ -689,16 +558,6 @@ export class RolesGuard implements CanActivate {
 
 </details>
 
-<details>
-<summary><b>8.5 npm vs pnpm? <code>node_modules</code> nằm ở đâu khi cài?</b></summary>
-
-- `install` tác động lên `node_modules` + `package.json` của **thư mục hiện tại**.
-- Cài sai thư mục → package lạc chỗ, `package.json` thiếu dependency (người khác clone về chạy lỗi).
-- pnpm dùng cấu trúc **strict**: deps gián tiếp nằm trong `node_modules/.pnpm`, tiết kiệm ổ đĩa.
-- Dùng `pnpm add` để giữ lockfile nhất quán.
-
-</details>
-
 ---
 
 ## 9. TypeORM Relations
@@ -771,32 +630,11 @@ this.postRepository.find({ relations: ['author'] });
 </details>
 
 <details>
-<summary><b>9.7 Gán quan hệ chỉ bằng <code>{ id }</code> được không?</b></summary>
-
-- Được. Để set FK, TypeORM chỉ cần **id** của bản ghi liên quan, không phải load cả entity.
-
-```ts
-const post = this.postRepository.create({ ...dto, author: { id: authorId } as User });
-// -> chỉ ghi cột authorId, không query bảng users
-```
-
-</details>
-
-<details>
 <summary><b>9.8 (Security) Vì sao <code>authorId</code> phải lấy từ JWT, không từ body client gửi?</b></summary>
 
 - Chống **mạo danh**: nếu client tự gửi `authorId`, họ có thể tạo bài "nhân danh" người khác.
 - Mọi dữ liệu **định danh chủ sở hữu** phải lấy từ **token đã xác thực** (`@CurrentUser()`), không tin body.
 - Vì vậy `authorId` **không** nằm trong DTO.
-
-</details>
-
-<details>
-<summary><b>9.9 Một entity có nhiều <code>@ManyToOne</code> được không?</b></summary>
-
-- Được. Mỗi `@ManyToOne` sinh một cột FK riêng.
-
-Ví dụ: `Comment` thuộc cả `User` lẫn `Post` → bảng `comments` có hai cột `authorId` và `postId`.
 
 </details>
 
@@ -937,15 +775,6 @@ const [data, total] = await qb.skip((page-1)*limit).take(limit).getManyAndCount(
 </details>
 
 <details>
-<summary><b>11.4 QueryBuilder vs Repository <code>find()</code> — khi nào dùng cái nào?</b></summary>
-
-- `find()`/`findOne()`: gọn cho query đơn giản (where, relations, order).
-- **QueryBuilder**: linh hoạt cho query động/phức tạp — `andWhere` tuỳ điều kiện, join tuỳ biến, subquery, aggregate, raw SQL (`ILIKE`, hàm DB).
-- API nhiều filter tuỳ chọn → QueryBuilder dễ kiểm soát hơn.
-
-</details>
-
-<details>
 <summary><b>11.5 Query param luôn là string — validate kiểu number/boolean thế nào?</b></summary>
 
 - Dùng `@Type(() => Number)` (class-transformer) + `transform: true` trong ValidationPipe để **ép kiểu** trước khi `@IsInt`/`@Min` kiểm tra.
@@ -963,15 +792,6 @@ const [data, total] = await qb.skip((page-1)*limit).take(limit).getManyAndCount(
 - Thành phần **bắt exception** ném ra trong app và định hình response lỗi.
 - Nằm ở **cuối** request lifecycle, kích hoạt khi có lỗi.
 - Dùng để **chuẩn hoá format lỗi** + **log tập trung**.
-
-</details>
-
-<details>
-<summary><b>12.2 <code>@Catch()</code> vs <code>@Catch(HttpException)</code>?</b></summary>
-
-- `@Catch()` (không tham số): bắt **mọi** exception.
-- `@Catch(HttpException)`: chỉ bắt loại chỉ định (có thể truyền nhiều loại).
-- Filter triển khai `ExceptionFilter` với method `catch(exception, host)`.
 
 </details>
 
@@ -1018,15 +838,6 @@ const [data, total] = await qb.skip((page-1)*limit).take(limit).getManyAndCount(
 </details>
 
 <details>
-<summary><b>13.2 Vì sao mock dependency trong unit test?</b></summary>
-
-- **Cô lập** đơn vị cần test — không phụ thuộc DB/mạng/service khác.
-- → test nhanh, ổn định, dễ tái lập.
-- Là lợi ích trực tiếp của **DI**: dependency tiêm vào nên thay bằng mock dễ dàng.
-
-</details>
-
-<details>
 <summary><b>13.3 <code>Test.createTestingModule</code> + <code>getRepositoryToken</code>?</b></summary>
 
 - `Test.createTestingModule({ providers: [...] }).compile()`: dựng DI container riêng cho test.
@@ -1038,24 +849,6 @@ const module = await Test.createTestingModule({
   providers: [UsersService, { provide: getRepositoryToken(User), useValue: mockRepo }],
 }).compile();
 ```
-
-</details>
-
-<details>
-<summary><b>13.4 <code>jest.fn()</code>, <code>mockResolvedValue</code>, <code>clearAllMocks</code>?</b></summary>
-
-- `jest.fn()`: hàm giả, ghi lại số lần gọi + tham số (`.mock.calls`).
-- `mockReturnValue`/`mockResolvedValue`: điều khiển giá trị trả (sync/async).
-- `jest.clearAllMocks()` (trong `afterEach`): reset để các test độc lập.
-
-</details>
-
-<details>
-<summary><b>13.5 Test một hàm async ném exception thế nào?</b></summary>
-
-- Ném lỗi: `await expect(service.findOne('x')).rejects.toThrow(NotFoundException)`.
-- Giá trị trả: `await expect(fn()).resolves.toEqual(...)`.
-- Theo mẫu **AAA** (Arrange–Act–Assert).
 
 </details>
 
@@ -1164,23 +957,6 @@ await prisma.$transaction(async (tx) => {
 </details>
 
 <details>
-<summary><b>14.5 Vấn đề N+1 trong Prisma xảy ra khi nào và cách tránh?</b></summary>
-
-- N+1: query list rồi loop từng phần tử query relation riêng → 1 query list + N query con.
-- Tránh chuẩn: dùng `include`/`select` để fetch relation trong cùng lần gọi; mặc định Prisma chạy thêm một `findMany ... WHERE id IN (...)` (KHÔNG phải N query riêng).
-- Prisma có DataLoader nội bộ: gom các `findUnique` cùng where/selection trong cùng tick thành một `findMany` (hữu ích trong GraphQL resolver).
-- Cần JOIN thật ở tầng DB (1 SQL, LATERAL JOIN): bật Preview `relationJoins` + `relationLoadStrategy: 'join'`.
-
-```ts
-// TOT
-const issues = await prisma.issue.findMany({
-  include: { assignee: { select: { id: true, name: true } } },
-});
-```
-
-</details>
-
-<details>
 <summary><b>14.6 Connection pool trong Prisma hoạt động sao và PG driver adapter để làm gì?</b></summary>
 
 - Prisma quản lý pool nội bộ. Query engine (v6 trở về trước): default `num_physical_cpus * 2 + 1`, chỉnh qua `connection_limit` trên `DATABASE_URL`. (v7 + driver adapter: theo default driver, ví dụ `pg` `max = 10`.)
@@ -1227,46 +1003,6 @@ model Issue {
   id     String      @id @default(cuid())
   status IssueStatus @default(TODO)
 }
-```
-
-</details>
-
-<details>
-<summary><b>14.9 Optimistic vs pessimistic locking trong Prisma: tránh lost update ra sao?</b></summary>
-
-- Nhiều request cùng sửa một bản ghi (vd kéo-thả issue) → có thể lost update.
-- Prisma không có `@Version` tự động như TypeORM → optimistic phải tự làm: thêm cột `version` (hoặc `updatedAt`), đưa vào `where` của `update`; nếu không khớp nghĩa là đã bị sửa → retry.
-- Pessimistic: `SELECT ... FOR UPDATE` qua `$queryRaw` trong interactive transaction để khóa hàng đến khi commit.
-
-```ts
-const res = await prisma.issue.updateMany({
-  where: { id, version: expectedVersion },
-  data: { status: 'DONE', version: { increment: 1 } },
-});
-if (res.count === 0) throw new ConflictException('Issue da bi sua, hay tai lai');
-```
-
-</details>
-
-<details>
-<summary><b>14.10 Soft delete trong Prisma làm thế nào và có gì cần lưu ý?</b></summary>
-
-- Prisma không có soft delete tích hợp → pattern: thêm cột `deletedAt DateTime?`, coi NULL = còn sống. 'Xóa' thì `update` set `deletedAt = now()` thay vì `delete`.
-- Lưu ý: mọi query đọc phải tự thêm `where: { deletedAt: null }`, quên là lộ bản ghi đã xóa.
-- Đỡ lặp: dùng Client Extensions (`$extends`) chèn điều kiện tự động (hoặc middleware `$use`, đã deprecated).
-- Unique constraint vẫn tính cả dòng đã soft-delete → có thể cần partial unique index hoặc đưa `deletedAt` vào khóa duy nhất.
-
-```ts
-const prisma = basePrisma.$extends({
-  query: {
-    issue: {
-      async findMany({ args, query }) {
-        args.where = { ...args.where, deletedAt: null };
-        return query(args);
-      },
-    },
-  },
-});
 ```
 
 </details>
@@ -1385,24 +1121,6 @@ async logout(userId: string, jti: string, exp: number, res: Response) {
 
 </details>
 
-<details>
-<summary><b>15.7 Tại sao access token nên hết hạn ngắn và refresh token hết hạn dài? Cấu hình expiry hợp lý?</b></summary>
-
-- **Access ngắn** (5-15m): đi kèm mỗi request và khó thu hồi (stateless) nên cửa sổ sống càng ngắn rủi ro càng nhỏ.
-- **Refresh dài** (vài ngày-tuần): tránh đăng nhập lại liên tục; ít lộ diện (scope hẹp, httpOnly), thu hồi được từ DB, có rotation.
-- Đây là đánh đổi **bảo mật** (ngắn càng an toàn) vs **UX** (ngắn quá phải refresh liên tục).
-- Có thể thêm **sliding + absolute expiration**: gia hạn khi active nhưng giới hạn tổng thời lượng (ví dụ tối đa 30 ngày).
-- **Bẫy**: access và refresh nên dùng **secret/key riêng**, không chung một secret.
-
-```ts
-const ACCESS_TTL = '15m';   // ngan: gioi han rui ro
-const REFRESH_TTL = '7d';   // dai: UX tot, thu hoi duoc
-const accessToken = jwt.sign(payload, accessSecret, { expiresIn: ACCESS_TTL });
-const refreshToken = jwt.sign(payload, refreshSecret, { expiresIn: REFRESH_TTL });
-```
-
-</details>
-
 ---
 
 ## 16. Web Security
@@ -1489,22 +1207,6 @@ app.useGlobalPipes(new ValidationPipe({
 </details>
 
 <details>
-<summary><b>16.6 Vì sao Prisma/parameterized query chống được SQL injection? Khi nào vẫn có rủi ro?</b></summary>
-
-- SQL injection xảy ra khi input bị nối chuỗi vào câu SQL và bị diễn dịch như mã lệnh.
-- Prisma/parameterized query tách **câu lệnh SQL** khỏi **dữ liệu**: giá trị gửi như tham số bound, DB không diễn dịch như SQL → vô hiệu injection.
-- Vẫn rủi ro khi: dùng `$queryRawUnsafe`/`$executeRawUnsafe` nối chuỗi tay, hoặc nhúng tên bảng/cột động (identifier không parameterize được).
-- Khi cần raw: dùng tagged template `$queryRaw\`...\`` (tự parameterize) hoặc `Prisma.sql`/`Prisma.join`; identifier động phải whitelist thủ công.
-
-```ts
-// AN TOÀN: tagged template -> parameterized
-await prisma.$queryRaw`SELECT * FROM "User" WHERE email = ${email}`;
-// NGUY HIỂM: prisma.$queryRawUnsafe(`... '${email}'`)
-```
-
-</details>
-
-<details>
 <summary><b>16.7 Quản lý secret/env an toàn và masking PII trong log như thế nào?</b></summary>
 
 - Secret (DB URL, JWT secret, API key) không commit: để trong `.env` đã `.gitignore`; validate khi khởi động bằng schema (Joi/zod) để fail-fast.
@@ -1537,25 +1239,6 @@ function sanitize(obj) {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('PROJECT_LEAD', 'PROJECT_ADMIN')
 @Delete('projects/:id') remove(@Param('id') id: string) {}
-```
-
-</details>
-
-<details>
-<summary><b>16.9 [BỔ SUNG] JWT nên lưu ở đâu, đặt thời hạn thế nào, và xử lý access/refresh token ra sao?</b></summary>
-
-- **Lưu ở đâu**: `localStorage` tiện nhưng JS đọc được → dễ bị XSS đánh cắp; httpOnly cookie an toàn hơn (JS không đọc) nhưng phát sinh CSRF → cần `SameSite` (+ có thể CSRF token). Cookie thường là lựa chọn an toàn hơn cho web.
-- **Thời hạn**: access token ngắn (5–15 phút) giảm thiệt hại khi lộ; refresh token dài hơn nhưng phải thu hồi được.
-- **Refresh rotation**: mỗi lần refresh phát token mới, vô hiệu token cũ; phát hiện reuse → coi như bị đánh cắp, thu hồi cả family.
-- Bẫy: JWT stateless không tự revoke → logout/ban tức thì cần lưu trạng thái refresh (DB/Redis) hoặc blacklist jti. Ký bằng khoá mạnh, set `expiresIn`, validate `iss`/`aud`.
-
-```ts
-async rotate(oldRefresh) {
-  const r = await this.store.find(oldRefresh);
-  if (!r || r.revoked) throw new UnauthorizedException(); // reuse detection
-  await this.store.revoke(oldRefresh);
-  return this.issuePair(r.userId);
-}
 ```
 
 </details>
@@ -1877,23 +1560,6 @@ app.enableShutdownHooks();
 </details>
 
 <details>
-<summary><b>18.7 Trình bày thứ tự thực thi: Middleware -> Guard -> Interceptor -> Pipe -> Handler -> (Interceptor) -> Filter. Filter chạy khi nào và resolve theo thứ tự nào?</b></summary>
-
-- **Middleware** (cấp Express/Fastify, chưa có `ExecutionContext`) → **Guard** (auth/authz) → **Interceptor (trước)** → **Pipe** (validate/transform) → **Handler** → **Interceptor (sau)** xử lý response qua RxJS.
-- Guard chạy **trước** pipe, nên validation chỉ xảy ra sau khi qua auth.
-- **Exception Filter** chỉ kích hoạt khi có exception ném ở bất kỳ giai đoạn nào.
-- Bẫy: filter resolve từ **cụ thể đến tổng quát** (route → controller → global), ngược với các thành phần khác (global resolve trước).
-
-```ts
-intercept(ctx: ExecutionContext, next: CallHandler) {
-  const start = Date.now();
-  return next.handle().pipe(tap(() => log(Date.now() - start)));
-}
-```
-
-</details>
-
-<details>
 <summary><b>18.8 Dynamic module là gì? Phân biệt forRoot và forRootAsync.</b></summary>
 
 - Dynamic module: trả cấu hình động qua static method, truyền options và đăng ký provider/exports lúc runtime (nền tảng của `ConfigModule`, `JwtModule`).
@@ -1935,31 +1601,6 @@ ConfigModule.forRoot({
     JWT_EXPIRES_IN: Joi.string().default('15m'),
   }),
 });
-```
-
-</details>
-
-<details>
-<summary><b>18.10 ValidationPipe global hoạt động thế nào? Vì sao nên bật whitelist/transform và dùng DTO + class-validator?</b></summary>
-
-- `ValidationPipe` dùng `class-validator` (`@IsString()`, `@IsEmail()`...) + `class-transformer` để validate/transform body/query/param theo DTO. Bật global qua `useGlobalPipes` hoặc token `APP_PIPE`.
-- `whitelist: true`: loại field không khai báo trong DTO (chống over-posting).
-- `forbidNonWhitelisted: true`: ném lỗi nếu có field thừa.
-- `transform: true`: chuyển payload thành instance DTO + ép kiểu primitive (cần `enableImplicitConversion` hoặc decorator để ép số/boolean từ query string).
-
-```ts
-app.useGlobalPipes(new ValidationPipe({
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  transform: true,
-}));
-
-export class CreateIssueDto {
-  @IsString() @MaxLength(200)
-  title: string;
-  @IsOptional() @IsEnum(IssueStatus)
-  status?: IssueStatus;
-}
 ```
 
 </details>
@@ -2331,22 +1972,6 @@ interface ApiResponse<T> { data: T; meta: { total: number }; }
 function paginate<T extends { id: string }>(items: T[]): ApiResponse<T[]> {
   return { data: items, meta: { total: items.length } };
 }
-```
-
-</details>
-
-<details>
-<summary><b>21.2 Phân biệt các utility type Partial, Pick, Omit, Record, Required, Readonly?</b></summary>
-
-- `Partial<T>` mọi field thành optional (payload update); `Required<T>` ngược lại, bỏ `?`.
-- `Pick<T, K>` lấy tập con field; `Omit<T, K>` loại field (vd bỏ `password`).
-- `Record<K, V>` object type với key thuộc K, value kiểu V; `Readonly<T>` khóa gán lại (chỉ lúc compile).
-- Lợi ích: tạo DTO/type phái sinh từ một nguồn sự thật duy nhất, tránh trùng lặp.
-- Lưu ý: chỉ ràng buộc kiểu, KHÔNG loại field khỏi dữ liệu runtime → vẫn cần serializer (class-transformer).
-
-```ts
-type PublicUser = Omit<User, 'password'>;
-type UpdateUserDto = Partial<Pick<User, 'email' | 'role'>>;
 ```
 
 </details>
@@ -2899,24 +2524,6 @@ export class TransformInterceptor<T> implements NestInterceptor<T, { message: st
 </details>
 
 <details>
-<summary><b>24.7 HATEOAS là gì và content negotiation hoạt động thế nào? Bạn có áp dụng HATEOAS không?</b></summary>
-
-- HATEOAS (level 3 Richardson Maturity Model): response chứa `links` (`self`, `next`, `transitions`) để client khám phá API mà không hardcode URL.
-- Thực tế phần lớn REST API dùng level 2 (resource + HTTP verb chuẩn) vì HATEOAS đầy đủ tốn chi phí và FE thường đã biết routes — chỉ nhúng link khi cần (vd pagination `next`).
-- Content negotiation: client gửi `Accept` / `Accept-Language`, server chọn và trả `Content-Type` tương ứng (`406 Not Acceptable` nếu không đáp ứng được).
-- Phân biệt: `Accept`/`Accept-Language` là **request** header; `Content-Type` mô tả body của **cả request lẫn response**.
-
-```http
-GET /issues/42
-Accept: application/json
---- response ---
-Content-Type: application/json
-{ "data": {...}, "links": { "self": "/issues/42", "transitions": "/issues/42/transitions" } }
-```
-
-</details>
-
-<details>
 <summary><b>24.8 Rate limiting và caching trong REST API — bạn thiết kế ra sao và dùng header nào?</b></summary>
 
 - Rate limiting chống lạm dụng/DoS, đảm bảo công bằng; vượt ngưỡng trả `429 Too Many Requests` kèm `Retry-After` + `X-RateLimit-Limit/Remaining/Reset`.
@@ -3102,83 +2709,6 @@ app.enableShutdownHooks();
 ## 26. Worked Examples for Core Concepts
 
 <details>
-<summary><b>26.1 Decorator và metadata reflection trong NestJS hoạt động thế nào? Vì sao cần `reflect-metadata` và `emitDecoratorMetadata`?</b></summary>
-
-- Decorator (`@Controller`, `@Get`...) là syntactic sugar: gắn **metadata** lên class/method/param qua Reflection API.
-- `emitDecoratorMetadata: true` + `reflect-metadata` cho phép TypeScript phát kiểu tham số vào runtime để NestJS đọc.
-- NestJS dùng metadata để: biết kiểu `@Body()`/`@Param()`, giải quyết **DI**, và đọc decorator tự tạo (vd `@Roles('admin')`) cho guard/filter.
-- Thiếu cấu hình → metadata trống → lỗi `Can't resolve dependencies`; nếu Reflection hỏng, guard không đọc được role → **lỗ hổng bảo mật**.
-
-```ts
-// tsconfig: emitDecoratorMetadata + experimentalDecorators = true
-import 'reflect-metadata'; // main.ts, một lần đủ
-
-export const IsOwner = () => SetMetadata('isOwner', true);
-
-@Injectable()
-export class OwnerGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
-  canActivate(ctx: ExecutionContext): boolean {
-    const isOwner = this.reflector.get<boolean>('isOwner', ctx.getHandler());
-    if (!isOwner) return true; // không có decorator → cho qua
-    const { user, params } = ctx.switchToHttp().getRequest();
-    return user.id === params.id;
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><b>26.2 Active Record vs Data Mapper — khi nào dùng cái nào? Ảnh hưởng đến DI và testing thế nào?</b></summary>
-
-- **Active Record**: entity tự lưu (`user.save()`), gộp logic + persistence. Gọn nhưng entity nặng, khó test, tight coupling.
-- **Data Mapper** (Repository): entity là data thuần, `Repository` lo persist. Entity nhẹ, tách logic, dễ mock.
-- NestJS khuyến khích **Data Mapper**: hợp DI (inject repo, mock dễ), Clean Architecture, tái sử dụng repository.
-
-```ts
-@Injectable()
-export class UsersService {
-  constructor(@InjectRepository(User) private userRepo: Repository<User>) {}
-  async createUser(dto: CreateUserDto): Promise<User> {
-    return this.userRepo.save(this.userRepo.create(dto));
-  }
-}
-
-// Test: mock repo dễ dàng
-const mockUserRepo = {
-  create: jest.fn().mockReturnValue({ id: 1, name: 'Alice' }),
-  save: jest.fn().mockResolvedValue({ id: 1, name: 'Alice' }),
-};
-const service = new UsersService(mockUserRepo as any); // test độc lập, không cần DB
-```
-
-</details>
-
-<details>
-<summary><b>26.3 Async/await và Promise.then() khác gì? Tại sao async/await dễ hiểu hơn khi handle error?</b></summary>
-
-- `.then()` là callback-based, chain `.then().catch()` → khó đọc khi phức tạp ("callback hell"), error rải rác khó biết bước nào lỗi.
-- `async/await` là syntactic sugar trên Promise: viết như synchronous, `await` suspend/resume cho đến khi resolve.
-- Lợi thế lớn: **error handling tập trung** bằng `try/catch`, dễ phân loại exception → đúng status code.
-- `async function` luôn return Promise; `await` của Promise reject → ném exception cho `catch` bắt.
-
-```ts
-try {
-  const user = await usersService.findOne(id); // throw → nhảy vào catch
-  const posts = await postsService.findByAuthor(user.id);
-  res.json(posts);
-} catch (err) {
-  if (err instanceof NotFoundException) res.status(404).json(err);
-  else if (err instanceof ValidationException) res.status(400).json(err);
-  else res.status(500).json(err);
-}
-// Trong NestJS: handler async throw → exception filter tự bắt → trả status đúng
-```
-
-</details>
-
-<details>
 <summary><b>26.4 Request lifecycle trong NestJS — thứ tự Guard → Pipe → Interceptor → Handler → Filter chạy như thế nào? Ảnh hưởng tới ký tự nào?</b></summary>
 
 - Thứ tự: **Middleware → Guard → Interceptor (before) → Pipe → Handler → Interceptor (after) → Filter**.
@@ -3253,33 +2783,6 @@ async createIssue(dto: CreateIssueDto, projectId: string) {
   });
 }
 // Tốt hơn: Postgres SEQUENCE → nextval() đảm bảo không trùng
-```
-
-</details>
-
-<details>
-<summary><b>26.7 Many-to-Many relationship với join table — khi nào cần explicit join table (vs implicit)? Dữ liệu lưu ở đâu?</b></summary>
-
-- **Implicit** (`@ManyToMany` + `@JoinTable`): TypeORM tự tạo bảng nối chỉ chứa 2 FK (vd `posts_tags`: `postId`, `tagId`). Dùng khi **không cần dữ liệu thêm**.
-- **Explicit** (entity riêng): dùng khi bảng nối cần **dữ liệu riêng** (vd `role`, `assignedAt`, `emailNotificationEnabled`).
-- Dữ liệu lưu trong chính bảng nối — không thể nhét vào `users` hay `issues` đơn lẻ → bắt buộc explicit.
-
-```ts
-@Entity()
-export class IssueAssignee {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @ManyToOne(() => Issue, (i) => i.assignees, { onDelete: 'CASCADE' }) issue: Issue;
-  @ManyToOne(() => User) user: User;
-  @Column({ type: 'enum', enum: AssigneeRole }) role: AssigneeRole; // PRIMARY/SECONDARY
-  @Column({ default: true }) emailNotificationEnabled: boolean;
-  @CreateDateColumn() assignedAt: Date;
-}
-
-// Query lọc theo dữ liệu join table
-const primary = await this.issueAssigneeRepo.find({
-  where: { issue: { id: issueId }, role: AssigneeRole.PRIMARY },
-  relations: ['user'],
-});
 ```
 
 </details>
@@ -3541,30 +3044,6 @@ export function correlationMiddleware(req, res, next) {
 </details>
 
 <details>
-<summary><b>28.3 Một query bị chậm. Quy trình bạn dùng để chẩn đoán và tối ưu nó là gì?</b></summary>
-
-- Quy trình: **đo → đọc plan → sửa → đo lại**.
-- (1) Bật **query logging** (Prisma `log:['query']`; TypeORM `logging`, `maxQueryExecutionTime`); (2) chạy **`EXPLAIN ANALYZE`** — soi Seq Scan trên bảng lớn, lệch estimated vs actual (lệch lớn = thống kê cũ, cần `ANALYZE`), node tốn nhất; (3) sửa theo ưu tiên: thêm/chỉnh **index** (composite theo thứ tự `WHERE`/`ORDER BY`), viết lại query sargable, giảm dữ liệu trả về, denormalize/cache.
-
-```sql
-EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM issues
-WHERE project_id = 42 AND status = 'OPEN' ORDER BY created_at DESC LIMIT 20;
--- Seq Scan 120ms -> sau khi thêm index: Index Scan < 2ms
-CREATE INDEX idx_issues_project_status_created ON issues (project_id, status, created_at DESC);
-```
-
-| Triệu chứng trong plan | Nguyên nhân | Cách xử lý |
-|---|---|---|
-| Seq Scan bảng lớn | Thiếu index / function trên cột | Thêm index; điều kiện sargable |
-| estimated ≠ actual | Thống kê lỗi thời | `ANALYZE table` |
-| Nested loop nhiều vòng | JOIN thiếu index khóa | Index cột FK |
-| Sort tốn thời gian | `ORDER BY` không khớp index | Index có cột sort, đúng chiều |
-
-- **Bẫy**: index làm chậm `INSERT/UPDATE` và tốn dung lượng; bảng nhỏ planner có thể cố ý Seq Scan. Đừng thêm bừa — hãy đo.
-
-</details>
-
-<details>
 <summary><b>28.4 N+1 query là gì, vì sao nó "ẩn" cho tới khi data lớn, và cách phát hiện/khắc phục với Prisma, TypeORM và GraphQL?</b></summary>
 
 - **N+1**: 1 query lấy N bản ghi rồi chạy thêm N query con cho quan hệ từng bản ghi → N+1 round-trip. Ẩn vì vấn đề tỉ lệ với kích thước data: dev 5 record vẫn nhanh, prod 5000 record thành 5001 query.
@@ -3591,34 +3070,6 @@ const issues = await prisma.issue.findMany({ where: { projectId }, include: { au
 - Định luật nền tảng: **CAP** (khi partition, chọn C hay A) và **PACELC** (kể cả không partition, vẫn trade Latency vs Consistency). Mọi cache/replica/queue đều mua hiệu năng bằng giá nhất quán/phức tạp.
 - **Anti-pattern**: resume-driven development (chọn Kafka/k8s vì "ngầu") và premature optimization cho quy mô chưa có.
 - Ví dụ: Blog/CMS giai đoạn đầu (vài nghìn user) → **modular monolith** NestJS + Postgres + Redis là đủ; tách microservice chỉ thêm phức tạp.
-
-</details>
-
-<details>
-<summary><b>28.6 Chọn SQL hay NoSQL như thế nào? Tiêu chí và cạm bẫy.</b></summary>
-
-- Quyết định dựa trên **hình dạng dữ liệu, mẫu truy vấn, yêu cầu nhất quán** — không theo trend.
-
-| Tiêu chí | Nghiêng SQL | Nghiêng NoSQL |
-|---|---|---|
-| Quan hệ | Nhiều, cần JOIN | Document tự chứa, ít JOIN |
-| Giao dịch | Cần ACID đa bảng | Chấp nhận eventual consistency |
-| Schema | Ổn định, ràng buộc | Linh hoạt, đổi thường xuyên |
-| Truy vấn | Ad-hoc, aggregation | Biết trước access pattern, key-based |
-| Quy mô ghi | Vertical + read replica | Horizontal scale ghi cực lớn |
-
-- **Hiểu sai thường gặp**: "NoSQL nhanh hơn" không đúng tổng quát — chỉ nhanh *với đúng access pattern*, đổi lại khó query linh hoạt, dễ duplicate.
-- **Postgres ngày nay rất linh hoạt**: `JSONB` (index/query được) cho dữ liệu schema-less, `tsvector` cho full-text. Nhiều bài "tưởng cần NoSQL" thì một cột `JSONB` là đủ.
-- **An toàn cho đa số app CRUD/giao dịch**: bắt đầu với **Postgres**, chỉ bổ sung NoSQL khi có vấn đề cụ thể (event log khổng lồ, time-series, cache document).
-
-```sql
-CREATE TABLE issue (
-  id bigint PRIMARY KEY,
-  project_id bigint REFERENCES project(id),  -- toàn vẹn quan hệ
-  custom_fields jsonb                         -- linh hoạt như NoSQL
-);
-CREATE INDEX idx_issue_custom ON issue USING gin (custom_fields);
-```
 
 </details>
 
@@ -3662,27 +3113,6 @@ ALTER TABLE users DROP COLUMN first_name, DROP COLUMN last_name;         -- Cont
 </details>
 
 <details>
-<summary><b>28.10 Làm sao bạn ước lượng (estimate) và chia nhỏ một task lớn, ví dụ "xây dựng hệ thống notification"?</b></summary>
-
-- Nguyên tắc: **chia nhỏ tới mức mỗi phần ship độc lập và ước lượng tự tin** (lý tưởng < 1-2 ngày/phần).
-- (1) Vẽ thành phần **dọc theo luồng dữ liệu** (không theo tầng kỹ thuật): sự kiện kích hoạt, fan-out/queue, các kênh (in-app/email/push), lưu trữ & read/unread, preference, real-time; (2) xác định **MVP vertical slice** (làm trọn một luồng end-to-end trước); (3) đánh dấu **unknown/spike** để nghiên cứu trước (vd APNs/FCM); (4) ước lượng theo **dải + buffer rủi ro**, đừng con số đơn lẻ.
-
-```
-Notification System (ước lượng thô)
-├─ Event emitter (EventEmitter2)        ~0.5d
-├─ Queue + worker (BullMQ + Redis)      ~1d
-├─ In-app: DB + API list/mark-read      ~1d
-├─ Real-time (Socket.IO gateway)        ~1d
-├─ Email (provider+template+retry)      ~1.5d ← rủi ro tích hợp
-├─ User preferences                     ~1d
-└─ Test + tài liệu + observability      ~1d
-```
-
-- Bổ trợ: dùng **story points** (kích thước tương đối) khi nhiều bất định, tham chiếu task tương tự. Quan trọng nhất: **cập nhật ước lượng khi biết thêm** — estimate là dự báo, không phải lời hứa cứng.
-
-</details>
-
-<details>
 <summary><b>28.11 Bạn được giao maintain một codebase backend lớn, lạ, không có tài liệu. Bạn đọc hiểu nó như thế nào?</b></summary>
 
 - Không đọc tuần tự từng file — đi từ **ngoài vào trong, từ luồng thực tới chi tiết**.
@@ -3705,35 +3135,6 @@ Notification System (ước lượng thô)
 ---
 
 ## 29. Kỹ năng mềm và Câu hỏi hành vi (Backend)
-
-<details>
-<summary><b>29.1 Phương pháp STAR là gì và vì sao nên dùng nó để trả lời câu hỏi hành vi? Cho một khung mẫu áp dụng cho tình huống backend.</b></summary>
-
-- **STAR** = khung trả lời câu hỏi hành vi gồm 4 phần: **S**ituation (bối cảnh), **T**ask (nhiệm vụ/mục tiêu), **A**ction (việc *chính bạn* làm + lý do kỹ thuật), **R**esult (kết quả đo được + bài học).
-- Action dùng "**tôi**", không phải "chúng tôi"; Result phải có **con số** (latency, downtime, số bug).
-- Vì sao dùng: câu hỏi hành vi đánh giá cách bạn ra quyết định và hợp tác → STAR ép câu trả lời súc tích, có bằng chứng, nổi bật vai trò cá nhân.
-- Lỗi thường gặp: kể lan man theo dòng thời gian, dùng "chúng tôi", không có kết quả định lượng.
-
-```text
-S: "Endpoint /issues của Jira Clone (NestJS+Prisma+PG) chậm, ~500 user."
-T: "Giảm p95 từ 1.2s xuống <300ms."
-A: "Tôi profiling thấy N+1 khi load assignees → include chọn lọc,
-    composite index (projectId,status), cursor pagination."
-R: "p95 còn 240ms; viết checklist review tránh N+1."
-```
-
-</details>
-
-<details>
-<summary><b>29.2 Kể về một lần hệ thống gặp downtime / bạn bị gọi on-call lúc đêm. Bạn đã xử lý ra sao? (STAR)</b></summary>
-
-- **S**: Blog/CMS API trả 503 hàng loạt lúc 2h sáng, alert `/health` (terminus) bắn Slack, tôi trực on-call.
-- **T**: Khôi phục nhanh (giảm MTTR), không mất dữ liệu, rồi tìm root cause.
-- **A**: **Mitigate first** — thấy Prisma pool cạn (`Timed out fetching a connection`) do worker BullMQ giữ transaction dài; tôi pause queue + rolling restart pod → API trả 200 sau ~8 phút. Sau đó đọc log (pino + `requestId`) tìm nguyên nhân, mở incident channel, update team mỗi 15 phút.
-- **R**: Downtime ~10 phút. Hôm sau fix root cause (tách HTTP call ra ngoài transaction, set `connection_limit` + timeout), viết **post-mortem blameless**, thêm alert "pool > 80%".
-- Điểm nhấn: ưu tiên **mitigation trước root-cause**, communicate liên tục, biến sự cố thành cải tiến.
-
-</details>
 
 <details>
 <summary><b>29.3 Bạn ưu tiên trả nợ kỹ thuật (tech debt) hay làm tính năng mới như thế nào? Lấy ví dụ một quyết định cụ thể. (STAR)</b></summary>
@@ -3778,73 +3179,6 @@ R: "p95 còn 240ms; viết checklist review tránh N+1."
 </details>
 
 <details>
-<summary><b>29.6 Văn hóa code review của bạn ra sao? Bạn cho review thế nào để vừa giữ chất lượng vừa không làm tổn thương đồng đội?</b></summary>
-
-- Triết lý: review để **bảo vệ codebase và chia sẻ kiến thức**, không phán xét người viết.
-- **Comment vào code, không vào người**: "Hàm này có thể N+1 khi list rỗng" thay vì "Bạn lại quên N+1".
-- **Prefix rõ mức độ** để biết đâu là blocker: `nit:`, `suggestion:`, `question:`, `blocking:`.
-- **Khen cái tốt** (không chỉ bới lỗi); giữ **PR nhỏ** (< 400 dòng); bất đồng kéo dài thì gọi 5 phút thay vì cãi trong comment.
-
-| Loại | Ý nghĩa | Chặn merge? |
-|------|---------|-------------|
-| `nit:` | Sở thích, format | Không |
-| `suggestion:` | Có thể tốt hơn | Không (tùy author) |
-| `question:` | Cần làm rõ | Có thể |
-| `blocking:` | Bug / bảo mật / sai logic | Có |
-
-</details>
-
-<details>
-<summary><b>29.7 Kể về một lần bạn mentor / giúp một đồng nghiệp junior. Bạn tiếp cận thế nào? (STAR)</b></summary>
-
-- **S**: Junior mới vào team Jira Clone gặp khó với DI và module NestJS, hay lỗi `Can't resolve dependencies`.
-- **T**: Giúp bạn tự tin làm độc lập, không chỉ "sửa hộ".
-- **A**: **Không sửa code thay** — pair-programming, cùng đọc message lỗi để bạn tự tìm chỗ thiếu `exports`. Dạy "cho cần câu" (cách đọc DI graph + docs). Giao **task vừa sức tăng dần** (CRUD nhỏ → guard/interceptor), review kèm giải thích "vì sao". Lịch 1-1 ngắn hằng tuần.
-- **R**: Sau ~3 tuần bạn tự làm module có test, tự debug DI, và bắt đầu review PR. Bài học: mentor tốt = **tăng tính tự chủ**, đo bằng việc họ cần mình ít đi.
-
-</details>
-
-<details>
-<summary><b>29.8 Bạn xử lý áp lực deadline gấp như thế nào, đặc biệt khi yêu cầu vượt thời gian thực tế? (STAR)</b></summary>
-
-- **S**: Sát ngày demo Jira Clone, PM muốn thêm "real-time activity feed" (Socket.IO) trong 3 ngày, còn bug ưu tiên cao chưa xong.
-- **T**: Giao giá trị đúng hạn mà không gây nợ kỹ thuật nguy hiểm.
-- **A**: **Không im lặng nhận hết rồi vỡ deadline** — làm rõ scope + trao đổi trade-off ("3 ngày giao feed cho event tạo/chuyển trạng thái; filter nâng cao làm sau"). **Chia nhỏ**, làm phần rủi ro cao trước (Socket.IO + auth handshake). Cắt scope an toàn (broadcast theo room workspace), **ghi rõ chỗ tạm thời**. Update PM hằng ngày.
-- **R**: Demo chạy đúng phần cam kết, khách hài lòng; sau đó hoàn thiện phần đã cắt.
-- Bài học: đòn bẩy mạnh nhất là **đàm phán scope minh bạch** (must-have / nice-to-have), không phải cố OT âm thầm đánh đổi chất lượng.
-
-</details>
-
-<details>
-<summary><b>29.9 "Ownership" với bạn nghĩa là gì? Kể một lần bạn nhận trách nhiệm về một vấn đề ngoài phạm vi công việc trực tiếp. (STAR)</b></summary>
-
-- **S**: Ở Blog/CMS API, CI pass nhưng production lỗi do thiếu migration — vấn đề "process", không thuộc task của tôi.
-- **T**: Ownership = **thấy vấn đề thì nhận, không chờ phân công**, theo tới khi xong.
-- **A**: Điều tra thấy Prisma migration không tự apply trong pipeline deploy → tự thêm bước `prisma migrate deploy` vào CD, thêm check trong `/health` (terminus) báo nếu schema lệch. Viết lại tài liệu quy trình deploy, chia sẻ team.
-- **R**: Hết hẳn lỗi "quên migration" trên production.
-- Ownership = **chịu trách nhiệm tới khi vấn đề ở tay user được giải quyết** (gồm monitoring, tài liệu, phòng ngừa), dù ngoài ticket được giao.
-
-</details>
-
-<details>
-<summary><b>29.10 Bạn học một công nghệ / thư viện backend mới như thế nào khi dự án yêu cầu? Cho một ví dụ cụ thể.</b></summary>
-
-- Ưu tiên **hiểu mental model trước khi học API chi tiết**.
-- **Đọc "Why" trước "How"**: docs chính thức (motivation/concepts) ưu tiên hơn blog.
-- **Dựng spike nhỏ tách biệt** (POC ngoài codebase chính) → đọc **source / TypeScript types** khi docs chưa đủ → **đối chiếu với cái đã biết** → **viết test + ghi chú** để bám kiến thức.
-
-| Bước | Ví dụ với BullMQ |
-|------|------------------|
-| Why | "Tách việc nặng khỏi request, retry, rate-limit" |
-| Spike | 1 producer + 1 worker Redis, gửi 1 job |
-| Source/types | Đọc `JobsOptions`, `WorkerOptions` |
-| Test | Job retry với `attempts` + `backoff` |
-
-Ví dụ: dự án yêu cầu **BullMQ** (tôi từng dùng `Bull`); nhờ học mô hình trước (tách `Queue`/`Worker`/`QueueEvents` trên Redis streams) tôi tránh lỗi kinh điển chạy producer + worker chung tiến trình.
-
-</details>
-
-<details>
 <summary><b>29.11 Kể về một lần bạn nhận sai và sửa một quyết định kỹ thuật của chính mình. (STAR)</b></summary>
 
 - **S**: Trong Jira Clone, tôi cache danh sách issue của board trong Redis với TTL cố định 60s để giảm tải Postgres.
@@ -3852,17 +3186,6 @@ Ví dụ: dự án yêu cầu **BullMQ** (tôi từng dùng `Bull`); nhờ học
 - **A**: Sau release, user phàn nàn kéo thả xong người khác chờ tới 60s mới thấy — phá real-time. Tôi **thừa nhận TTL sai cho use-case cộng tác**, không bảo vệ. Đổi sang **cache invalidation theo event** (mutation thì xóa/cập nhật key cache board đó) + push qua Socket.IO; key per-board, invalidate trong cùng flow update.
 - **R**: Board cập nhật gần tức thì, tải DB vẫn thấp.
 - Điểm nhấn: TTL hợp dữ liệu ít đổi/đọc nhiều, không hợp dữ liệu cộng tác; sẵn sàng đảo quyết định của chính mình theo bằng chứng là dấu hiệu senior.
-
-</details>
-
-<details>
-<summary><b>29.12 Khi nhận một bug production khẩn cấp mà bạn không phải người viết code, bạn xử lý quy trình thế nào? (STAR)</b></summary>
-
-- **S**: Blog/CMS API trả 500 ở endpoint đăng bài; code do đồng nghiệp đang nghỉ phép viết, tôi không quen module.
-- **T**: Khôi phục dịch vụ và sửa đúng nguyên nhân, dù không phải owner.
-- **A**: **Reproduce trước khi sửa** (tái hiện ở staging, không vá mò). **Khoanh vùng bằng dữ liệu** — log `requestId` (pino) + stack trace thấy validation (`class-validator`) cho `null` qua → vỡ Prisma `notNull`. **Mitigation an toàn trước** (cân nhắc rollback; ở đây fix nhỏ: thêm `@IsNotEmpty()` đúng field, map lỗi DB thành 400). Viết **regression test** tái hiện bug trước khi vá.
-- **R**: Khôi phục ~15 phút có test che lưng; để comment trong PR cho owner nắm.
-- Bài học: code lạ thì reproduce + đọc log + regression test; "không phải code của tôi" không phải cớ chậm trễ.
 
 </details>
 
@@ -3929,28 +3252,6 @@ const Post = model('Post', postSchema);                           // collection:
 ```
 
 Nhớ: `ref` để `populate` biết trỏ model nào; tên collection mặc định là số nhiều, viết thường.
-
-</details>
-
-<details>
-<summary><b>30.4 Tích hợp Mongoose vào NestJS với @nestjs/mongoose như thế nào (decorator schema, forFeature, inject model)?</b></summary>
-
-- Package `@nestjs/mongoose`: định nghĩa schema bằng **decorator** (`@Schema`, `@Prop`) và inject model qua DI.
-- `SchemaFactory.createForClass()` để sinh schema; dùng `HydratedDocument<Post>` cho type document.
-- `MongooseModule.forFeature([...])` đăng ký model theo từng feature module để inject đúng phạm vi.
-- Kết nối toàn cục: `MongooseModule.forRoot(uri)` (hoặc `forRootAsync` để lấy URI từ `ConfigService`) trong `AppModule`.
-
-```ts
-@Schema({ timestamps: true })
-export class Post {
-  @Prop({ required: true }) title: string;
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' }) author: Types.ObjectId;
-}
-export const PostSchema = SchemaFactory.createForClass(Post);
-
-// module: imports: [MongooseModule.forFeature([{ name: Post.name, schema: PostSchema }])]
-// service: constructor(@InjectModel(Post.name) private postModel: Model<PostDocument>) {}
-```
 
 </details>
 
@@ -4067,24 +3368,6 @@ finally { session.endSession(); }
 </details>
 
 <details>
-<summary><b>30.11 Vì MongoDB schemaless, làm sao đảm bảo schema validation và consistency dữ liệu?</b></summary>
-
-- MongoDB không cưỡng chế schema ở tầng storage → validation chuyển sang ứng dụng. Có **ba lớp phòng thủ**:
-  1. **Mongoose schema**: `required`, `enum`, `min/max`, `match`, `validate` custom — chạy trước khi save.
-  2. **DTO + class-validator (NestJS)**: validate input client ngay ở controller (ValidationPipe), bắt lỗi sớm, trả 400 rõ ràng.
-  3. **MongoDB `$jsonSchema`** ở mức collection: chốt chặn cuối trong DB, ngăn cả ghi từ script ngoài Mongoose.
-- Consistency: Mongo mặc định **eventual consistency** khi đọc từ secondary; dùng `writeConcern` (`w:'majority'`) để ghi bền, `readConcern`/đọc primary khi cần read-after-write.
-
-```ts
-const orderSchema = new Schema({
-  status: { type: String, enum: ['pending', 'paid', 'shipped'], required: true },
-  total: { type: Number, min: 0, required: true },
-});
-```
-
-</details>
-
-<details>
 <summary><b>30.12 ObjectId là gì và những điểm cần lưu ý khi dùng làm khoá chính so với UUID/auto-increment?</b></summary>
 
 - `_id` mặc định là **ObjectId** — 12 byte: 4 byte timestamp + 5 byte random (machine/process) + 3 byte counter. Sinh ở client driver nên không cần round-trip lấy id.
@@ -4134,21 +3417,6 @@ git push -u origin feat/issue-comments
 git switch feat/auth
 git rebase origin/main
 git push --force-with-lease   # AN TOÀN nếu đã push trước đó
-```
-
-</details>
-
-<details>
-<summary><b>31.3 Quy tắc vàng của rebase là gì, và vì sao force-push phải dùng --force-with-lease?</b></summary>
-
-- **Golden rule**: không bao giờ rebase/viết lại lịch sử trên branch người khác đang dựa vào (`main`, `develop`) — hash mới làm lịch sử phân kỳ, gây merge rối, mất commit.
-- Rebase branch riêng đã push thì phải force-push vì local đã khác remote.
-- `git push --force`: ghi đè vô điều kiện → **xoá mất** commit đồng nghiệp vừa push.
-- `git push --force-with-lease`: chỉ ghi đè nếu remote vẫn đúng như lần fetch gần nhất; ai vừa push thì lệnh bị từ chối → an toàn.
-
-```bash
-git rebase -i origin/main
-git push --force-with-lease
 ```
 
 </details>
@@ -4217,20 +3485,6 @@ git reset --soft HEAD~1   # chỉ branch riêng: bỏ commit cuối, giữ code
 </details>
 
 <details>
-<summary><b>31.8 git cherry-pick dùng để làm gì? Có rủi ro gì cần lưu ý?</b></summary>
-
-- `git cherry-pick <commit>` lấy **một/vài commit cụ thể** áp sang branch hiện tại, không cần merge cả branch.
-- Dùng cho: **hotfix** (đưa fix từ `main` sang `release/1.4` đang chạy production), hoặc lấy đúng một commit từ branch chưa sẵn sàng merge.
-- Rủi ro: commit có **hash mới** → cùng thay đổi tồn tại 2 nơi, sau này merge dễ duplicate/conflict; cherry-pick lẻ dễ thiếu commit phụ thuộc; lạm dụng làm lịch sử khó truy vết → chỉ dùng cho hotfix gấp.
-
-```bash
-git switch release/1.4
-git cherry-pick a1b2c3d
-```
-
-</details>
-
-<details>
 <summary><b>31.9 .gitignore dùng làm gì, và lỡ commit secret rồi thì xử lý thế nào?</b></summary>
 
 - `.gitignore` liệt kê đường dẫn Git **không track**: `node_modules`, `dist`, log, và đặc biệt secret (`.env`).
@@ -4243,25 +3497,6 @@ git cherry-pick a1b2c3d
 ```bash
 git rm --cached .env
 git commit -m "chore: stop tracking .env"
-```
-
-</details>
-
-<details>
-<summary><b>31.10 husky + lint-staged để làm gì? Tại sao chỉ chạy lint trên file đã staged?</b></summary>
-
-- **husky** quản lý **Git hooks** (`pre-commit`, `commit-msg`...); **lint-staged** chạy lint/format **chỉ trên file đang staged**.
-- Chỉ chạy file staged vì lint cả repo mỗi commit thì **chậm** và dễ sửa file không liên quan; lint-staged giữ pre-commit nhanh, gọn.
-- Hook chỉ chạy **local** và bị bỏ qua bằng `--no-verify` → là "hàng rào nhanh", **không thay thế CI** (CI vẫn là nguồn chân lý).
-
-```jsonc
-// package.json
-"lint-staged": { "*.ts": ["eslint --fix", "prettier --write"] }
-```
-
-```bash
-# .husky/pre-commit
-npx lint-staged
 ```
 
 </details>
@@ -4325,60 +3560,6 @@ deploy-prod:
 </details>
 
 <details>
-<summary><b>32.3 Trong GitHub Actions, phân biệt workflow, job và step? Job chạy song song hay tuần tự, và làm sao tạo phụ thuộc?</b></summary>
-
-- **Workflow**: file `.yml` trong `.github/workflows/`, kích hoạt bởi event (`push`, `pull_request`...).
-- **Job**: chạy trên **một runner riêng** (VM sạch); các job **mặc định song song**.
-- **Step**: lệnh `run`/action `uses` trong job, chạy **tuần tự** và chia sẻ filesystem trong job.
-- Job không chia sẻ filesystem với nhau → dùng `needs` để tuần tự; truyền dữ liệu giữa job phải `upload/download-artifact` (với Docker: push/pull qua registry).
-
-```yaml
-build:
-  needs: test          # build chạy sau khi test pass
-deploy:
-  needs: build         # test -> build -> deploy
-  if: github.ref == 'refs/heads/main'
-```
-
-</details>
-
-<details>
-<summary><b>32.4 Caching trong GitHub Actions hoạt động thế nào? Cache dependency (pnpm/npm) và Docker layer khác nhau ra sao?</b></summary>
-
-- VM sạch mỗi lần → mặc định cài lại từ đầu rất chậm; cache lưu thư mục giữa các lần chạy, **key dựa trên hash lockfile**.
-- **Cache dependency**: đơn giản nhất là `cache: pnpm` của `setup-node` (tự cache store theo lockfile); hoặc `actions/cache` thủ công với `restore-keys` để fallback.
-- **Cache Docker layer**: khác hẳn — cache layer image để không build lại layer không đổi, qua `docker/build-push-action` với `cache-from/cache-to: type=gha`.
-- **Điểm nhớ**: key sai (không đổi khi dependency đổi) → cache "stale" cài thiếu package mới.
-
-```yaml
-- uses: docker/build-push-action@v6
-  with:
-    cache-from: type=gha
-    cache-to: type=gha,mode=max
-```
-
-</details>
-
-<details>
-<summary><b>32.5 Matrix strategy trong GitHub Actions dùng để làm gì? Cho ví dụ test NestJS trên nhiều phiên bản Node và xử lý khi một biến thể được phép fail.</b></summary>
-
-- **Matrix** sinh nhiều job song song từ một định nghĩa, mỗi job ứng một tổ hợp giá trị — hợp để test đa Node/OS/DB.
-- `fail-fast: false`: một biến thể fail KHÔNG hủy các biến thể khác (mặc định là hủy hết).
-- `include`/`exclude`: thêm/bớt tổ hợp lẻ ngoài tích Descartes.
-- `continue-on-error`: cho biến thể "thử nghiệm" được fail mà job vẫn xanh.
-- **Lưu ý**: chỉ matrix khi thực sự cần đảm bảo tương thích đa môi trường (vd thư viện dùng chung); service deploy nên pin đúng một Node version bằng production.
-
-```yaml
-strategy:
-  fail-fast: false
-  matrix:
-    node: [18, 20, 22]
-continue-on-error: ${{ matrix.node == 23 }}
-```
-
-</details>
-
-<details>
 <summary><b>32.6 Quản lý secret trong GitHub Actions như thế nào? Phân biệt repository secret, environment secret và variable; cảnh báo bảo mật cần lưu ý.</b></summary>
 
 - **Repository secrets** (`secrets.X`): mã hóa, dùng chung mọi workflow của repo.
@@ -4415,22 +3596,6 @@ COPY --from=build /app/node_modules ./node_modules
 USER node
 CMD ["node", "dist/main.js"]
 ```
-
-</details>
-
-<details>
-<summary><b>32.8 So sánh deploy Next.js lên Vercel với tự đóng gói Docker rồi deploy lên cloud. Khi nào chọn cái nào?</b></summary>
-
-- **Vercel**: nền tảng built riêng cho Next, hiểu SSR/SSG/ISR/Edge, tự map page sang serverless/edge, build + CDN tự động qua `git push`, có Preview Deployment mỗi PR.
-- **Chọn Vercel**: Next thuần frontend/BFF, cần preview-per-PR, không process chạy nền dài, ưu tiên tốc độ ship.
-- **Chọn Docker + cloud** (Cloud Run/ECS): cần chung VPC với backend, WebSocket/long-running, kiểm soát chi phí/hạ tầng, đã có K8s/ECS.
-- **Lưu ý**: Docker hóa Next thì bật `output: 'standalone'` trong `next.config.js` để image nhỏ hơn nhiều.
-
-| | Vercel | Docker+Cloud |
-|---|---|---|
-| Setup | Zero-config | Dockerfile + IaC |
-| WebSocket/long-run | Hạn chế | Tốt |
-| Kiểm soát hạ tầng | Thấp | Cao |
 
 </details>
 
@@ -4539,27 +3704,6 @@ ready() { return this.health.check([
 ```bash
 gcloud run services update-traffic api --to-revisions=api-00042-abc=100
 kubectl rollout undo deployment/api
-```
-
-</details>
-
-<details>
-<summary><b>32.15 Mô tả một pipeline CI/CD GitHub Actions hoàn chỉnh cho service NestJS từ commit đến production, ghép các mảnh đã nói ở trên thành một bức tranh tổng thể.</b></summary>
-
-Đọc theo trình tự nhân quả, ghép `needs` để tách giai đoạn:
-- **`ci`** (chạy cả PR): fail fast lint → type → unit → e2e (Postgres service container) — cổng chất lượng.
-- **`build`** (chỉ `main`): tạo image tag theo **git SHA bất biến**, OIDC không lưu cloud key, cache layer qua GHA.
-- **`migrate`** (`needs: build`): chạy **một lần** trước deploy (tránh race), gắn `environment: production` có approval; migration tương thích ngược.
-- **`deploy`**: rolling lên Cloud Run + **smoke test** readiness; `if: failure()` rút traffic về revision cũ → rollback tự động.
-- Sợi chỉ xuyên suốt: secret theo environment, image bất biến giúp rollback xác định, health/smoke là cổng cuối, DB migration luôn additive.
-
-```yaml
-jobs:
-  ci:        { runs-on: ubuntu-latest, services: { postgres: ... } }
-  build:     { needs: ci, if: github.ref == 'refs/heads/main',
-               permissions: { id-token: write } }   # tag api:${{ github.sha }}
-  migrate:   { needs: build, environment: production }  # prisma migrate deploy
-  deploy:    { needs: migrate, environment: production } # rolling + smoke + rollback
 ```
 
 </details>
@@ -4705,24 +3849,6 @@ return a.length === b.length && timingSafeEqual(a, b);
 </details>
 
 <details>
-<summary><b>33.8 Lưu và xoay (rotate) API key/secret an toàn như thế nào trong một service NestJS?</b></summary>
-
-- Nguyên tắc: **secret không bao giờ nằm trong source code hay log**, và phải xoay được không downtime.
-- Lưu: không hardcode/commit; dùng env nạp qua `@nestjs/config`; `.env` chỉ local và trong `.gitignore`.
-- Production: dùng **secret manager** (AWS/GCP Secret Manager, Vault) hoặc K8s Secret; mã hóa at-rest, kiểm soát IAM.
-- **Validate lúc boot** (fail fast): thiếu secret thì app không start, hơn là chết giữa chừng.
-- Xoay không downtime: chấp nhận **2 key cùng lúc** — tạo key mới → service verify cả current + old → khi mọi instance dùng key mới mới **revoke** key cũ.
-- Bẫy: in `Authorization`/config object ra log; nhúng secret vào URL. Dùng **redaction** trong logger (pino `redact`).
-
-```ts
-ConfigModule.forRoot({
-  validationSchema: Joi.object({ STRIPE_SECRET_KEY: Joi.string().required() }),
-});
-```
-
-</details>
-
-<details>
 <summary><b>33.9 Outbox pattern là gì và nó giải quyết vấn đề gì khi tích hợp với hệ thống bên ngoài/queue?</b></summary>
 
 - Vấn đề **dual write**: ghi DB và publish event ở hai hệ thống khác nhau, không bọc chung transaction được.
@@ -4756,22 +3882,6 @@ try {
 } catch {
   return this.cache.get(`reco:${userId}`) ?? await this.popularItems(); // cache cũ -> degrade
 }
-```
-
-</details>
-
-<details>
-<summary><b>33.11 Khi nào dùng SDK chính thức của provider, khi nào tự gọi raw HTTP client?</b></summary>
-
-- **SDK** = client provider phát hành (stripe, @aws-sdk, resend); **raw HTTP** = tự gọi qua fetch/axios.
-- **Mặc định dùng SDK** cho provider phức tạp/nhạy cảm (Stripe, AWS): họ cài sẵn idempotency, retry, helper verify chữ ký webhook đúng chuẩn — tự viết dễ sai bảo mật.
-- **Dùng raw HTTP** khi: API rất đơn giản (một REST endpoint), SDK quá nặng/không có cho ngôn ngữ, hoặc cần kiểm soát chính xác timeout/retry mà SDK che mất.
-- Điểm cần nhớ: dù dùng SDK vẫn phải cấu hình lại timeout/retry và bọc trong circuit breaker/bulkhead của mình. SDK lo protocol; resilience policy là trách nhiệm của bạn.
-
-```ts
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  timeout: 5000, maxNetworkRetries: 2, // vẫn ghi đè theo policy của mình
-});
 ```
 
 </details>

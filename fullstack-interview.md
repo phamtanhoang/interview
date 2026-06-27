@@ -669,27 +669,5 @@ Hiểu yêu cầu -> Thiết kế -> Code(DB/BE/FE) -> Test -> Ship -> Theo dõi
 
 ---
 
-### 3.10. Bạn hình dung lộ trình phát triển của mình thế nào: từ own một feature, tới lead một project, rồi mentor người khác?
-
-<details>
-<summary>👉 Gợi ý trả lời (STAR)</summary>
-
-Hỏi về định hướng + growth mindset. Một khung tham khảo (có thể dựa trên trải nghiệm thật):
-
-- Situation: Bắt đầu ở vai trò own từng feature riêng lẻ, chịu trách nhiệm trọn vẹn end-to-end.
-- Task: Mở rộng phạm vi ảnh hưởng từ "làm tốt việc mình" sang "làm cả nhóm tốt hơn".
-- Action — ba nấc:
-  - Own feature: thành thạo kỹ thuật, ship đáng tin cậy, giao tiếp tốt với manager — nền tảng bắt buộc.
-  - Lead project/epic: chuyển trọng tâm từ "code của tôi" sang "kết quả cả mảng" — chia/phân công việc, định nghĩa kiến trúc chung, gỡ blocker, ra quyết định đánh đổi lớn hơn, communicate với stakeholder; học buông bớt việc tự code để tạo đòn bẩy.
-  - Mentor: nâng người khác — review mang tính dạy, pair programming, viết chuẩn chung, tạo môi trường an toàn để dám hỏi/dám sai. Thước đo đổi sang "team tự giải được khi không có tôi".
-- Result: tăng dần "bán kính ảnh hưởng" — đóng góp đo bằng chất lượng và tốc độ cả nhóm, không chỉ số dòng code mình viết.
-
-Lưu ý: lên cao không phải rời bỏ kỹ thuật — vẫn giữ tay nghề để ra quyết định kiến trúc đúng, dùng nó tạo đòn bẩy. Growth không tuyến tính cứng: ngay khi còn own feature đã có thể mentor nhẹ và lead nhẹ, tích lũy kỹ năng nấc sau từ sớm.
-
-</details>
-
-
----
-
 > 📌 *Vai trò fullstack đánh giá cao người nhìn được bức tranh **end-to-end**: từ UI → API → DB → deploy, và biết **ship nhanh** mà vẫn kiểm soát chất lượng.*
 > Hãy gắn câu trả lời với một feature thật bạn từng làm trọn vẹn cả hai đầu. 🚀

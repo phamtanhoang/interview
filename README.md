@@ -2,16 +2,16 @@
 
 Bộ câu hỏi ôn luyện phỏng vấn cho vị trí **Fullstack Developer** (React/Next.js ở frontend, NestJS/Node.js ở backend, kèm kỹ năng dùng **AI coding tools**). Tất cả bằng **tiếng Việt có dấu**, câu hỏi nhóm theo chủ đề, mỗi đáp án nằm trong khối **collapse** (`<details>`) — bấm để xem **gạch đầu dòng ý chính + 1 ví dụ ngắn**.
 
-> Tổng cộng **~646 câu hỏi** trên **65 chủ đề**.
+> Tổng cộng **~450 câu hỏi** trên **56 chủ đề**.
 
 ## 📚 Các bộ câu hỏi
 
 | File | Trọng tâm | Số chủ đề | Số câu |
 |---|---|---:|---:|
-| [frontend-interview.md](./frontend-interview.md) | React, Hooks, Next.js, state/data-fetching, hệ sinh thái (React Router, TanStack Query, RHF/Zod, Tailwind...), perf, testing, CSS, system design | 14 | ~180 |
-| [backend-interview.md](./backend-interview.md) | Node.js, NestJS (DI/module/guard/interceptor/pipe), TypeORM & Prisma, **SQL thuần & thiết kế CSDL**, **MongoDB**, auth/JWT, REST, **GraphQL & Realtime**, caching/queue, **Git workflow**, **CI/CD & Cloud**, third-party, security, testing | 34 | ~320 |
-| [ai-interview.md](./ai-interview.md) | Tư duy ứng dụng AI, prompting & brainstorming, **Claude Code** (skills, subagents, CLAUDE.md, hooks), **MCP**, workflows, Claude API, **Copilot vs Cursor vs Claude Code**, best practices | 14 | ~116 |
-| [fullstack-interview.md](./fullstack-interview.md) | End-to-end FE↔BE (contract, shared types, auth flow, upload), analytics/telemetry & feature flags, **cách làm việc (MVP-first, AI-native)** | 3 | ~30 |
+| [frontend-interview.md](./frontend-interview.md) | React, Hooks, Next.js, state/data-fetching, hệ sinh thái (React Router, TanStack Query, RHF/Zod, Tailwind...), perf, testing, CSS, system design | 14 | ~147 |
+| [backend-interview.md](./backend-interview.md) | Node.js, NestJS (DI/module/guard/interceptor/pipe), TypeORM & Prisma, **SQL thuần & thiết kế CSDL**, **MongoDB**, auth/JWT, REST, **GraphQL & Realtime**, caching/queue, **Git workflow**, **CI/CD & Cloud**, third-party, security, testing | 34 | ~261 |
+| [ai-interview.md](./ai-interview.md) | Tư duy/phán đoán khi dùng AI, prompting cơ bản, thư mục `.claude`, review & bảo mật output, **Copilot vs Cursor vs Claude Code**, câu hỏi hành vi (STAR) | 5 | ~13 |
+| [fullstack-interview.md](./fullstack-interview.md) | End-to-end FE↔BE (contract, shared types, auth flow, upload), analytics/telemetry & feature flags, **cách làm việc (MVP-first, AI-native)** | 3 | ~29 |
 
 ## 🧭 Cách ôn hiệu quả
 
