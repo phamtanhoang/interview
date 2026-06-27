@@ -37,6 +37,7 @@
 31. [Git Workflow và Cộng tác](#31-git-workflow-và-cộng-tác)
 32. [CI/CD và Triển khai (Docker, Cloud)](#32-cicd-và-triển-khai-docker-cloud)
 33. [Tích hợp Third-party và Khả năng chống chịu](#33-tích-hợp-third-party-và-khả-năng-chống-chịu)
+34. [SQL Thuần và Thiết kế CSDL](#34-sql-thuần-và-thiết-kế-csdl)
 
 ---
 
@@ -4771,6 +4772,408 @@ try {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   timeout: 5000, maxNetworkRetries: 2, // vẫn ghi đè theo policy của mình
 });
+```
+
+</details>
+
+---
+
+## 34. SQL Thuần và Thiết kế CSDL
+
+> **Cơ bản → Nâng cao.** Phần này tập trung kỹ năng *viết và đọc SQL thuần* (query + thiết kế bảng) — phần bạn còn yếu — và **bổ trợ** cho [Phần 19](#19-database-transactions-and-concurrency) (đã lo transaction, lock, isolation, deadlock). Ví dụ dùng schema Jira Clone trên **PostgreSQL**: `project(id, key, name)`, `issue(id, project_id, assignee_id, status, priority, story_points, sprint_id, parent_id, created_at, deleted_at)`, `users(id, name, email)`, `comment(id, issue_id, author_id, created_at)`, `sprint(id, project_id, name)`.
+
+### 🟢 Cơ bản
+
+<details>
+<summary><b>34.1 SQL là gì? Phân biệt nhóm lệnh DDL, DML, DCL, TCL?</b></summary>
+
+- **SQL** = ngôn ngữ truy vấn CSDL quan hệ; bạn mô tả *muốn gì* (declarative), DB tự quyết *làm thế nào*.
+- **DDL** (Data Definition) — định nghĩa cấu trúc: `CREATE`, `ALTER`, `DROP`, `TRUNCATE`.
+- **DML** (Data Manipulation) — thao tác dữ liệu: `SELECT`, `INSERT`, `UPDATE`, `DELETE`.
+- **DCL** (Data Control) — phân quyền: `GRANT`, `REVOKE`.
+- **TCL** (Transaction Control) — gom giao dịch: `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`.
+- Mẹo nhớ: DDL đổi *khung*, DML đổi *nội dung*, TCL gói *nhiều thay đổi thành 1 đơn vị* (xem 19.1).
+
+```sql
+CREATE TABLE project (id serial PRIMARY KEY, key text UNIQUE, name text); -- DDL
+INSERT INTO project (key, name) VALUES ('JIRA', 'Jira Clone');           -- DML
+```
+
+</details>
+
+<details>
+<summary><b>34.2 Thứ tự thực thi LOGIC của một câu SELECT là gì? Vì sao không alias được ở WHERE?</b></summary>
+
+- Viết theo `SELECT ... FROM ...` nhưng DB **xử lý logic theo thứ tự**: `FROM/JOIN → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT/OFFSET`.
+- Hệ quả quan trọng: `WHERE` chạy **trước** `SELECT` nên **không dùng được alias** đặt ở SELECT; còn `ORDER BY` chạy sau SELECT nên **dùng được** alias.
+- `GROUP BY` xảy ra trước `SELECT` → trong SELECT chỉ được nêu cột đã group hoặc hàm tổng hợp.
+- Hiểu thứ tự này giúp giải thích đa số lỗi "column does not exist" và "must appear in GROUP BY".
+
+```sql
+SELECT status, COUNT(*) AS total
+FROM issue
+WHERE deleted_at IS NULL   -- chua thay alias "total" o day duoc
+GROUP BY status
+ORDER BY total DESC;       -- nhung o day thi duoc
+```
+
+</details>
+
+<details>
+<summary><b>34.3 Các loại JOIN (INNER, LEFT, RIGHT, FULL, CROSS) khác nhau thế nào?</b></summary>
+
+- **INNER JOIN**: chỉ giữ dòng **khớp ở cả hai** bảng.
+- **LEFT JOIN**: giữ **toàn bộ bảng trái**, bên phải không khớp thì điền `NULL` (vd: lấy mọi issue kể cả chưa có assignee).
+- **RIGHT JOIN**: ngược lại LEFT (ít dùng — thường viết lại thành LEFT cho dễ đọc).
+- **FULL OUTER JOIN**: giữ cả hai bên, thiếu thì `NULL`.
+- **CROSS JOIN**: tích Descartes (mọi cặp) — cẩn thận bùng nổ số dòng.
+- Bẫy hay gặp: lọc bảng phải của LEFT JOIN trong `WHERE` sẽ **vô tình biến nó thành INNER JOIN** → điều kiện đó phải đặt trong `ON`.
+
+```sql
+-- Moi issue + ten nguoi duoc giao (NULL neu chua giao)
+SELECT i.id, i.status, u.name AS assignee
+FROM issue i
+LEFT JOIN users u ON u.id = i.assignee_id;
+```
+
+</details>
+
+<details>
+<summary><b>34.4 GROUP BY và các hàm tổng hợp (COUNT/SUM/AVG/MIN/MAX) hoạt động ra sao?</b></summary>
+
+- `GROUP BY` gom các dòng cùng giá trị thành **một nhóm**; hàm tổng hợp tính ra **một giá trị mỗi nhóm**.
+- Mọi cột trong `SELECT` phải **hoặc** nằm trong `GROUP BY` **hoặc** bọc trong hàm tổng hợp.
+- Khác biệt cần nhớ: `COUNT(*)` đếm **mọi dòng** (kể cả NULL); `COUNT(col)` đếm dòng có `col` **khác NULL**; `COUNT(DISTINCT col)` đếm giá trị **duy nhất**.
+- `AVG/SUM` **bỏ qua NULL** (không coi NULL là 0) — dễ ra kết quả "bất ngờ".
+
+```sql
+-- So issue va tong story point moi project
+SELECT project_id, COUNT(*) AS so_issue, SUM(story_points) AS tong_diem
+FROM issue
+GROUP BY project_id;
+```
+
+</details>
+
+<details>
+<summary><b>34.5 WHERE và HAVING khác nhau ở đâu?</b></summary>
+
+- `WHERE` lọc **từng dòng trước khi** gom nhóm → **không** dùng được hàm tổng hợp.
+- `HAVING` lọc **sau khi** `GROUP BY`, trên **kết quả tổng hợp** của nhóm → dùng được `COUNT/SUM/...`.
+- Tối ưu: đẩy điều kiện lọc dòng vào `WHERE` (giảm dữ liệu sớm), chỉ để điều kiện trên nhóm ở `HAVING`.
+
+```sql
+-- Cac project co tren 10 issue chua dong
+SELECT project_id, COUNT(*) AS so_issue
+FROM issue
+WHERE status <> 'DONE'        -- loc dong
+GROUP BY project_id
+HAVING COUNT(*) > 10;         -- loc nhom
+```
+
+</details>
+
+<details>
+<summary><b>34.6 NULL trong SQL có gì đặc biệt? Các bẫy thường gặp?</b></summary>
+
+- `NULL` nghĩa là "**không biết**", không phải 0 hay chuỗi rỗng.
+- So sánh với NULL bằng `=`/`<>` luôn cho **UNKNOWN** (không TRUE) → phải dùng `IS NULL` / `IS NOT NULL`.
+- `NULL` bị loại khỏi `COUNT(col)`, `SUM`, `AVG`; và `WHERE col <> 'X'` sẽ **bỏ sót** dòng có `col IS NULL`.
+- `COALESCE(a, b)` trả về giá trị non-NULL đầu tiên; `NULLIF(a, b)` trả NULL nếu a=b (tránh chia 0).
+
+```sql
+-- Hien thi 'Chua giao' thay vi NULL, va dem dung ca dong NULL
+SELECT COALESCE(u.name, 'Chua giao') AS assignee, COUNT(*) 
+FROM issue i LEFT JOIN users u ON u.id = i.assignee_id
+GROUP BY u.name;
+```
+
+</details>
+
+<details>
+<summary><b>34.7 Phân biệt PRIMARY KEY, FOREIGN KEY và UNIQUE constraint?</b></summary>
+
+- **PRIMARY KEY**: định danh duy nhất mỗi dòng — **duy nhất + NOT NULL**, mỗi bảng chỉ một (có thể gồm nhiều cột = composite key).
+- **FOREIGN KEY**: ràng buộc tham chiếu sang khóa của bảng khác, đảm bảo **toàn vẹn tham chiếu** (không trỏ tới id không tồn tại); kèm hành vi `ON DELETE CASCADE/SET NULL/RESTRICT` (xem 19.8).
+- **UNIQUE**: đảm bảo không trùng nhưng **cho phép NULL** (Postgres coi nhiều NULL là khác nhau); một bảng có nhiều unique constraint.
+- Postgres thực thi PK/UNIQUE bằng **unique index** ngầm → tự có index, không cần tạo thêm.
+
+```sql
+CREATE TABLE issue (
+  id serial PRIMARY KEY,
+  project_id int NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+  key text NOT NULL,
+  UNIQUE (project_id, key)   -- "JIRA-1" duy nhat trong moi project
+);
+```
+
+</details>
+
+### 🟡 Trung bình
+
+<details>
+<summary><b>34.8 Subquery: phân biệt scalar, IN, EXISTS và correlated subquery?</b></summary>
+
+- **Scalar**: trả đúng 1 giá trị, dùng như một biểu thức (vd so sánh với trung bình).
+- **`IN (subquery)`**: lọc theo tập giá trị; cẩn thận `NOT IN` mà subquery có NULL → trả **rỗng** (vì so sánh ra UNKNOWN).
+- **`EXISTS (subquery)`**: trả TRUE/FALSE theo "có dòng nào không"; xử lý NULL an toàn, thường dùng `NOT EXISTS` thay cho `NOT IN`.
+- **Correlated**: subquery tham chiếu cột của query ngoài → chạy **lại cho mỗi dòng ngoài** (có thể chậm; cân nhắc viết lại thành JOIN).
+
+```sql
+-- Project co it nhat 1 issue dang mo (EXISTS dung khi chi can "co/khong")
+SELECT p.* FROM project p
+WHERE EXISTS (
+  SELECT 1 FROM issue i WHERE i.project_id = p.id AND i.status <> 'DONE'
+);
+```
+
+</details>
+
+<details>
+<summary><b>34.9 Vì sao LEFT JOIN rồi COUNT(*) bị sai, mà COUNT(cột) lại đúng?</b></summary>
+
+- Với project **không có issue nào**, LEFT JOIN vẫn sinh **1 dòng** với phần issue toàn `NULL`.
+- `COUNT(*)` đếm cả dòng "ảo" đó → ra **1** thay vì **0** (sai).
+- `COUNT(i.id)` chỉ đếm `i.id` khác NULL → ra **0** đúng. Đây là lỗi kinh điển hay được hỏi.
+- Quy tắc: khi đếm phía bảng được LEFT JOIN, **đếm theo cột khóa** của bảng đó, đừng dùng `COUNT(*)`.
+
+```sql
+SELECT p.id, COUNT(i.id) AS so_issue   -- KHONG dung COUNT(*)
+FROM project p
+LEFT JOIN issue i ON i.project_id = p.id
+GROUP BY p.id;
+```
+
+</details>
+
+<details>
+<summary><b>34.10 UNION vs UNION ALL? Khi nào dùng cái nào?</b></summary>
+
+- Cả hai nối kết quả 2 query (phải **cùng số cột, kiểu tương thích**).
+- `UNION` **loại trùng** → phải sort/hash để khử trùng → **tốn hơn**.
+- `UNION ALL` giữ **mọi dòng** (kể cả trùng) → **nhanh hơn**; mặc định nên dùng nếu chắc chắn không có/không cần khử trùng.
+- Khác `JOIN`: UNION nối **theo chiều dọc** (thêm dòng), JOIN nối **theo chiều ngang** (thêm cột).
+
+```sql
+SELECT id, 'issue' AS loai FROM issue WHERE created_at > now() - interval '7 day'
+UNION ALL
+SELECT id, 'comment' FROM comment WHERE created_at > now() - interval '7 day';
+```
+
+</details>
+
+<details>
+<summary><b>34.11 Dùng CASE WHEN để "pivot" / conditional aggregation thế nào?</b></summary>
+
+- `CASE WHEN ... THEN ... ELSE ... END` là biểu thức điều kiện, dùng được trong `SELECT`, `ORDER BY`, và **bên trong hàm tổng hợp**.
+- Mẹo mạnh: gộp nhiều `COUNT(CASE WHEN ...)` để biến **dòng thành cột** (pivot) — đếm issue theo từng trạng thái trên một dòng.
+- Thay cho việc chạy nhiều query riêng cho mỗi status.
+
+```sql
+-- Bang dashboard: moi project 1 dong, cot theo trang thai
+SELECT project_id,
+  COUNT(*) FILTER (WHERE status = 'TODO')        AS todo,
+  COUNT(*) FILTER (WHERE status = 'IN_PROGRESS') AS doing,
+  COUNT(*) FILTER (WHERE status = 'DONE')        AS done
+FROM issue GROUP BY project_id;
+-- FILTER (WHERE...) la cu phap Postgres; tuong duong COUNT(CASE WHEN ... THEN 1 END)
+```
+
+</details>
+
+<details>
+<summary><b>34.12 Chuẩn hóa (1NF, 2NF, 3NF) là gì? Khi nào cố ý denormalize?</b></summary>
+
+- **1NF**: mỗi ô là **giá trị nguyên tử**, không nhóm lặp/mảng nhồi trong 1 cột (vd không nhét "label1,label2" vào một cột text → tách bảng `issue_label`).
+- **2NF**: đạt 1NF + **không phụ thuộc một phần** vào *một phần* khóa chính ghép (mọi cột phải phụ thuộc **toàn bộ** khóa).
+- **3NF**: đạt 2NF + **không phụ thuộc bắc cầu** (cột non-key không phụ thuộc cột non-key khác — vd đừng lưu `project_name` trong bảng `issue`, chỉ giữ `project_id`).
+- Mục tiêu: giảm trùng lặp & sai lệch dữ liệu. **Denormalize** (cố ý lặp dữ liệu) chỉ khi cần **tốc độ đọc** cao và chấp nhận tự đồng bộ (vd cache `comment_count`, xem 30.2) — đánh đổi đúng-đắn lấy hiệu năng.
+
+```sql
+-- Chuan hoa quan he nhieu-nhieu issue <-> label
+CREATE TABLE issue_label (
+  issue_id int REFERENCES issue(id),
+  label_id int REFERENCES label(id),
+  PRIMARY KEY (issue_id, label_id)
+);
+```
+
+</details>
+
+<details>
+<summary><b>34.13 Index giúp gì? "Sargable" là gì? Vì sao nhiều WHERE không dùng được index?</b></summary>
+
+- Index (B-tree) cho phép DB **tìm nhanh** thay vì quét toàn bảng (chi tiết loại index ở 19.6).
+- **Sargable** = điều kiện mà index dùng được: so sánh **trực tiếp trên cột** (`col = $1`, `col > $1`, `col BETWEEN`, `LIKE 'abc%'`).
+- **Không sargable** (làm index vô dụng): bọc **hàm lên cột** (`LOWER(email) = ...`, `DATE(created_at) = ...`), `LIKE '%abc%'` (mở đầu bằng `%`), hoặc tính toán trên cột (`story_points + 1 > 5`).
+- Cách chữa: tạo **functional index** (`CREATE INDEX ... ON users (LOWER(email))`), hoặc viết lại điều kiện về dạng range trên cột gốc.
+
+```sql
+-- KHONG sargable: ham boc cot -> seq scan
+WHERE DATE(created_at) = '2026-06-27'
+-- Sargable: range tren cot goc -> dung duoc index
+WHERE created_at >= '2026-06-27' AND created_at < '2026-06-28'
+```
+
+</details>
+
+<details>
+<summary><b>34.14 Phân trang OFFSET vs keyset (cursor) — cái nào tốt cho danh sách issue lớn?</b></summary>
+
+- **OFFSET/LIMIT**: đơn giản nhưng DB phải **đọc rồi bỏ** OFFSET dòng đầu → trang càng sâu **càng chậm**; còn bị **lệch/trùng** nếu dữ liệu thay đổi giữa các trang.
+- **Keyset (cursor/seek)**: nhớ giá trị mốc của trang trước (vd `created_at, id`) rồi lọc `WHERE (created_at, id) < (...)` → **nhanh ổn định** mọi trang vì bám vào index, không "đếm bỏ".
+- Đánh đổi: keyset không nhảy tới "trang 57" tùy ý (chỉ next/prev) → hợp **infinite scroll**; OFFSET hợp khi cần số trang.
+
+```sql
+-- Keyset: trang tiep theo sau (created_at, id) cua dong cuoi trang truoc
+SELECT * FROM issue
+WHERE project_id = $1 AND (created_at, id) < ($2, $3)
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+```
+
+</details>
+
+### 🔴 Nâng cao
+
+<details>
+<summary><b>34.15 Window function là gì? Khác GROUP BY ra sao? Phân biệt ROW_NUMBER/RANK/DENSE_RANK?</b></summary>
+
+- Window function tính toán **trên một "cửa sổ" các dòng liên quan** nhưng **không gộp dòng lại** — mỗi dòng vẫn giữ nguyên, có thêm cột tính toán.
+- Khác `GROUP BY` (làm **co** N dòng thành 1): window **giữ đủ N dòng**.
+- `OVER (PARTITION BY ... ORDER BY ...)` định nghĩa cửa sổ; ranking:
+  - `ROW_NUMBER()`: số thứ tự **duy nhất** 1,2,3...
+  - `RANK()`: đồng hạng thì **nhảy cóc** (1,1,3).
+  - `DENSE_RANK()`: đồng hạng **không nhảy** (1,1,2).
+
+```sql
+-- Xep hang issue trong moi project theo story_points giam dan
+SELECT id, project_id, story_points,
+  ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY story_points DESC) AS rn
+FROM issue;
+```
+
+</details>
+
+<details>
+<summary><b>34.16 "Greatest-N-per-group": lấy issue MỚI NHẤT của mỗi project như thế nào?</b></summary>
+
+- Bài toán kinh điển: mỗi nhóm lấy 1 (hoặc N) dòng top theo một tiêu chí — `GROUP BY` thuần **không làm được** (nó mất các cột chi tiết).
+- **Cách 1 — window**: đánh `ROW_NUMBER()` trong mỗi partition rồi lọc `= 1` (tổng quát, lấy top-N dễ).
+- **Cách 2 — `DISTINCT ON` (Postgres)**: ngắn gọn cho top-1.
+- Tránh kiểu subquery `MAX(created_at)` rồi join lại — dễ sai khi trùng thời điểm.
+
+```sql
+-- Cach 1: window
+SELECT * FROM (
+  SELECT i.*, ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY created_at DESC) rn
+  FROM issue i
+) t WHERE rn = 1;
+
+-- Cach 2: DISTINCT ON (Postgres)
+SELECT DISTINCT ON (project_id) *
+FROM issue ORDER BY project_id, created_at DESC;
+```
+
+</details>
+
+<details>
+<summary><b>34.17 Running total và LAG/LEAD: tính tổng dồn và so sánh với dòng trước?</b></summary>
+
+- **Running total** (chạy tổng): `SUM(x) OVER (ORDER BY ...)` cộng dồn theo thứ tự — vd velocity tích lũy theo sprint.
+- **`LAG(col, n)` / `LEAD(col, n)`**: lấy giá trị của dòng **trước/sau** trong cửa sổ → tính delta, tăng trưởng mà **không cần self-join**.
+- Mặc định frame của `SUM ... ORDER BY` là "từ đầu partition đến dòng hiện tại" (running), khác với không có `ORDER BY` (tính cả partition).
+
+```sql
+-- So issue dong moi sprint + tong don + chenh lech so voi sprint truoc
+SELECT sprint_id, COUNT(*) AS done,
+  SUM(COUNT(*)) OVER (ORDER BY sprint_id) AS cong_don,
+  COUNT(*) - LAG(COUNT(*)) OVER (ORDER BY sprint_id) AS chenh_lech
+FROM issue WHERE status = 'DONE'
+GROUP BY sprint_id;
+```
+
+</details>
+
+<details>
+<summary><b>34.18 CTE (WITH) là gì? Recursive CTE để duyệt cây subtask/epic ra sao?</b></summary>
+
+- **CTE** (`WITH name AS (...)`): đặt tên cho một query con để **đọc dễ, tái dùng**, tách bước logic (thay cho subquery lồng sâu).
+- **Recursive CTE** (`WITH RECURSIVE`): duyệt cấu trúc **phân cấp/đồ thị** (cây subtask qua `parent_id`, epic → story → subtask) — gồm phần **anchor** (gốc) `UNION ALL` phần **đệ quy** (nối con).
+- Lưu ý: cần điều kiện dừng (cây không vòng) để tránh lặp vô tận.
+
+```sql
+-- Lay toan bo subtask con-chau cua issue goc #100
+WITH RECURSIVE tree AS (
+  SELECT id, parent_id FROM issue WHERE id = 100          -- anchor
+  UNION ALL
+  SELECT c.id, c.parent_id
+  FROM issue c JOIN tree t ON c.parent_id = t.id          -- de quy
+)
+SELECT * FROM tree;
+```
+
+</details>
+
+<details>
+<summary><b>34.19 Đọc EXPLAIN ANALYZE: phân biệt Seq Scan vs Index Scan, estimated vs actual?</b></summary>
+
+- `EXPLAIN` cho **kế hoạch dự kiến** (cost ước lượng); `EXPLAIN (ANALYZE, BUFFERS)` **chạy thật** và cho thời gian + số dòng thực + lượng buffer đọc.
+- **Seq Scan** (quét toàn bảng): ổn với bảng nhỏ, nhưng trên bảng lớn + có điều kiện lọc chọn lọc → dấu hiệu **thiếu index**. **Index Scan / Index Only Scan**: đang dùng index (thường tốt).
+- So **estimated vs actual rows**: lệch lớn ⇒ **thống kê cũ**, chạy `ANALYZE` để planner ước lượng đúng.
+- Quy trình tối ưu chuẩn (bật query log → EXPLAIN ANALYZE → thêm index/viết lại sargable) xem chi tiết ở [28.x](#28-tư-duy-và-giải-quyết-vấn-đề-backend).
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM issue WHERE project_id = 1 ORDER BY created_at DESC LIMIT 20;
+-- Soi: co "Seq Scan on issue"? actual rows >> estimated? -> them index (project_id, created_at DESC)
+```
+
+</details>
+
+<details>
+<summary><b>34.20 SQL vs NoSQL: chọn dựa trên tiêu chí nào?</b></summary>
+
+- **SQL (quan hệ)**: schema chặt, **JOIN** mạnh, **transaction ACID** đa bảng, truy vấn linh hoạt ad-hoc → hợp dữ liệu **quan hệ chặt, tính nhất quán cao** (đa số nghiệp vụ như Jira: project–issue–user–comment).
+- **NoSQL** (document/key-value/wide-column): schema linh hoạt, scale ngang dễ, đọc/ghi theo **một aggregate** rất nhanh → hợp dữ liệu **phi quan hệ, throughput lớn, hình dạng đa dạng** (log, event, catalog).
+- Đừng chọn theo "hot tech": phần lớn app khởi đầu **nên dùng Postgres** (có cả `jsonb` cho phần linh hoạt); chỉ thêm NoSQL khi có nhu cầu rõ (scale/đặc thù truy cập). Chi tiết MongoDB ở [Phần 30](#30-mongodb-và-mongoose-nosql).
+- Câu trả lời "ăn điểm": nói về **mô hình truy cập (access pattern)** và **tính nhất quán cần có**, không nói chung chung "NoSQL nhanh hơn".
+
+</details>
+
+<details>
+<summary><b>34.21 Một query danh sách issue rất chậm — bạn debug và tối ưu theo các bước nào?</b></summary>
+
+- **Đo trước, đoán sau**: bật query log (Prisma `log:['query']` / TypeORM `maxQueryExecutionTime`) tìm đúng query chậm, rồi `EXPLAIN ANALYZE`.
+- **Đọc plan**: Seq Scan trên bảng lớn? actual ≫ estimated (thống kê cũ)? node nào tốn thời gian nhất?
+- **Sửa theo ưu tiên**: (1) thêm/chỉnh **index** composite theo đúng thứ tự `WHERE` rồi `ORDER BY`; (2) viết lại điều kiện **sargable** (bỏ hàm bọc cột); (3) **giảm dữ liệu** trả về (chỉ `SELECT` cột cần, phân trang **keyset**); (4) xử lý **N+1** bằng JOIN/`include` (xem 19.7); (5) cuối cùng mới tính cache/denormalize.
+- Đo lại sau mỗi thay đổi để xác nhận đúng nguyên nhân.
+
+```sql
+-- Vd: query loc + sort -> index phu hop
+CREATE INDEX idx_issue_proj_created ON issue (project_id, created_at DESC)
+  WHERE deleted_at IS NULL;   -- partial: bo qua issue da xoa mem
+```
+
+</details>
+
+<details>
+<summary><b>34.22 Vài "gotcha" SQL hay bị hỏi để bẫy?</b></summary>
+
+- `COUNT(*)` vs `COUNT(col)` vs `COUNT(DISTINCT col)`: đếm mọi dòng / dòng non-NULL / giá trị duy nhất.
+- `AVG(col)` **bỏ NULL** khỏi cả tử lẫn mẫu — muốn coi NULL là 0 phải `AVG(COALESCE(col,0))`.
+- `NOT IN (subquery)` mà subquery chứa NULL → trả **rỗng**; dùng `NOT EXISTS` thay thế.
+- LEFT JOIN nhưng đặt điều kiện bảng phải trong `WHERE` → biến thành INNER JOIN (mất dòng NULL).
+- JOIN to-many làm **nhân dòng** → `SUM`/`COUNT` bị thổi phồng; cần group hoặc đếm distinct.
+- `ORDER BY` không có thì **thứ tự không đảm bảo** — đừng dựa vào "thứ tự tự nhiên".
+
+```sql
+-- Bay nhan dong: moi issue co nhieu comment -> SUM(story_points) bi nhan len
+-- Sai:
+SELECT i.project_id, SUM(i.story_points)
+FROM issue i JOIN comment c ON c.issue_id = i.id
+GROUP BY i.project_id;
+-- Dung: tong hop comment rieng, hoac SUM(DISTINCT...)/subquery
 ```
 
 </details>
