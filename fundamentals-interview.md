@@ -1,6 +1,6 @@
 # 🧱 Bộ câu hỏi phỏng vấn: JavaScript · TypeScript · Node.js (Nền tảng)
 
-> Gom các câu hỏi NỀN TẢNG về **JavaScript, TypeScript, Node.js core** — vốn trùng nhau ở `frontend-interview.md` (§1) và `backend-interview.md` (§1 Node, §21 TS) — về một chỗ; đã **gộp câu trùng** và **bỏ framing React/NestJS**.
+> Gom các câu hỏi NỀN TẢNG về **JavaScript, TypeScript, Node.js core** — vốn trùng nhau giữa file `frontend-interview.md` và `backend-interview.md` — về một chỗ; đã **gộp câu trùng** và **bỏ framing React/NestJS**.
 > Đây là phần ngôn ngữ & runtime, KHÔNG gắn framework: câu đặc thù React vẫn ở file frontend, đặc thù NestJS/Prisma vẫn ở file backend.
 > Mỗi đáp án nằm trong khối collapse (`<details>`) — bấm để xem.
 
@@ -63,6 +63,12 @@ console.log('B');                                // đồng bộ
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Closure là khi một hàm bên trong vẫn 'nhớ' và truy cập được các biến ở scope nơi nó được khai báo, kể cả sau khi hàm ngoài đã chạy xong và return. Bản chất là JavaScript dùng lexical scope: hàm gắn với nơi nó được VIẾT ra chứ không phải nơi nó được gọi, nên cái scope đó không bị dọn đi mà được giữ sống chừng nào còn hàm tham chiếu tới nó. Mình hay dùng closure để giữ state riêng tư, ví dụ một counter có biến đếm mà bên ngoài không sờ vào được, hoặc làm cache, memoization. Bug kinh điển là stale closure: callback capture giá trị tại thời điểm tạo, nên nếu biến đổi sau đó callback vẫn xài giá trị cũ — đúng kiểu vòng for dùng var rồi setTimeout in ra toàn số cuối. Cách xử lý là dùng let để mỗi vòng có binding mới, hoặc đọc giá trị mới nhất qua tham chiếu thay vì giữ một snapshot."
+
+---
+
 - Closure: hàm "ghi nhớ" và tiếp tục truy cập được các biến ở scope nơi nó được khai báo (lexical scope), kể cả khi hàm ngoài đã `return` và scope gốc tưởng như đã kết thúc.
 - Ứng dụng tích cực: factory giữ state riêng (đếm, cache), data privacy (mô phỏng biến private), memoization, currying, giữ tham chiếu ổn định cho callback.
 - Bug phổ biến — **stale closure**: callback "đóng băng" (capture) giá trị tại thời điểm tạo; nếu biến đó thay đổi sau này, callback vẫn dùng giá trị cũ. Hay gặp trong `setInterval`/`setTimeout`/event handler chạy lâu dài.
@@ -101,6 +107,12 @@ console.log(c.get()); // 2 — closure chia sẻ cùng biến, không phải sna
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Điểm cốt lõi cần nhớ là với hàm thường, `this` KHÔNG được quyết định lúc viết code mà lúc GỌI — tức là phụ thuộc vào call-site. Cùng một hàm, gọi kiểu `obj.fn()` thì `this` là `obj`, gọi trần `fn()` thì `this` là undefined ở strict mode hoặc global, còn `call`/`apply`/`bind` thì mình tự chỉ định `this`, và `new` thì `this` là instance mới. Chính vì `this` 'trôi' theo cách gọi nên hay dính bug: tách method ra biến rồi gọi là mất ngữ cảnh ngay. Arrow function thì khác hẳn — nó KHÔNG có `this` riêng mà lấy `this` từ scope bao quanh lúc viết (lexical), nên truyền làm callback như trong setTimeout hay event handler thì `this` vẫn giữ đúng, không cần bind. Đánh đổi là đừng dùng arrow làm method trên object literal rồi mong `this` trỏ vào chính object đó, vì arrow sẽ lấy `this` của scope ngoài chứ không phải object."
+
+---
 
 - Với **hàm thường**, `this` KHÔNG cố định lúc định nghĩa mà được xác định lúc GỌI (call-site):
   - `obj.fn()` → `this` là `obj` (object đứng trước dấu chấm).
@@ -142,6 +154,12 @@ setTimeout(new Timer().tick, 1000); // không cần bind
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Khác biệt nằm ở chỗ mình khởi động các tác vụ async lúc nào. Nếu `await` lần lượt từng cái thì đó là tuần tự — cái sau phải chờ cái trước settle xong mới bắt đầu, nên tổng thời gian là cộng dồn. Còn nếu mình khởi tạo hết tất cả Promise trước rồi mới `await Promise.all([...])` thì chúng chạy song song, cùng xuất phát một lúc, tổng thời gian chỉ xấp xỉ cái chậm nhất. Quy tắc chọn rất đơn giản: tuần tự khi bước sau PHỤ THUỘC kết quả bước trước, ví dụ phải có `userId` ở bước một mới fetch đơn hàng ở bước hai; còn các tác vụ ĐỘC LẬP thì cho chạy song song để tránh waterfall làm chậm vô ích. Có vài cái bẫy hay gặp: `await` trong vòng `for` là tuần tự, `forEach` thì không chờ `await` đâu, và `Promise.all` là fail-fast — một cái reject là cả nhóm hỏng, nên nếu muốn chịu lỗi từng phần thì dùng `Promise.allSettled`."
+
+---
+
 - `await` DỪNG hàm cho tới khi Promise settle. `await` lần lượt từng Promise → chạy TUẦN TỰ (cái sau chờ cái trước xong). Khởi tạo TẤT CẢ Promise trước rồi `await Promise.all([...])` → chạy SONG SONG (cùng khởi động, chờ chung).
 - Dùng tuần tự khi tác vụ sau PHỤ THUỘC kết quả tác vụ trước (vd cần `userId` từ bước 1 mới fetch đơn hàng ở bước 2).
 - Dùng song song khi các tác vụ ĐỘC LẬP → tổng thời gian xấp xỉ tác vụ chậm nhất thay vì tổng các tác vụ, tránh hiện tượng "waterfall".
@@ -164,6 +182,12 @@ const [user, posts] = await Promise.all([fetchUser(), fetchPosts()]);
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Bốn cái này đều nhận một mảng promise và trả về một promise mới, chỉ khác nhau ở điều kiện khi nào nó settle. `Promise.all` chờ tất cả resolve và trả mảng kết quả theo đúng thứ tự, nhưng fail-fast — một cái reject là nó reject ngay, dùng khi mình cần đủ mọi mảnh dữ liệu, thiếu một cái là vô nghĩa. `Promise.allSettled` thì không bao giờ reject, nó chờ tất cả xong rồi trả về trạng thái từng cái, dùng khi mình muốn biết cái nào thành công cái nào lỗi mà không để một lỗi làm sập cả nhóm. `Promise.race` lấy cái settle đầu tiên bất kể resolve hay reject, hợp để làm timeout. Còn `Promise.any` lấy cái RESOLVE đầu tiên, chỉ reject khi tất cả đều fail, hợp khi mình có nhiều nguồn dự phòng, đủ một cái chạy là được. Một điểm dễ nhầm là cả bốn đều khởi chạy promise song song ngay từ lúc tạo, các method này chỉ quyết định cách CHỜ chứ không quyết định cách chạy."
+
+---
 
 Cả bốn đều nhận một iterable các promise và trả về MỘT promise mới, khác nhau ở điều kiện settle:
 
@@ -197,6 +221,12 @@ const data = await Promise.race([
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Đây là ba thế hệ xử lý bất đồng bộ trong JavaScript, về bản chất giải quyết cùng một việc, chỉ khác nhau về độ dễ đọc và cách bắt lỗi. Đầu tiên là callback: mình truyền một hàm vào để được 'gọi lại' khi xong, Node quy ước error-first nên tham số đầu luôn là lỗi. Vấn đề là khi nhiều bước phụ thuộc nhau, callback lồng vào nhau tạo thành callback hell — code thụt sâu hình kim tự tháp, mỗi tầng lại phải check lỗi riêng, rất khó đọc và bảo trì. Promise ra đời để làm phẳng cái đó: nó là một đối tượng đại diện cho kết quả tương lai, mình nối tiếp bằng `.then()` và gom lỗi tập trung về một `.catch()` duy nhất. Cuối cùng async/await chỉ là syntactic sugar trên Promise, cho phép viết code async trông như đồng bộ và bắt lỗi bằng `try/catch` quen thuộc. Về xử lý lỗi thì nhớ đơn giản: callback check biến err, Promise dùng `.catch()`, còn async/await dùng `try/catch`."
+
+---
 
 Đây là ba thế hệ xử lý code bất đồng bộ (asynchronous) trong JavaScript/Node. Bản chất cả ba giải quyết cùng một việc, chỉ khác về độ dễ đọc và cách bắt lỗi.
 
@@ -240,6 +270,12 @@ try {
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Mình hay tách ra hai cặp khái niệm vì chúng dễ bị gộp làm một. Synchronous với asynchronous nói về CÁCH viết và nhận kết quả: đồng bộ là dòng sau phải đợi dòng trước xong, còn bất đồng bộ là khởi động một tác vụ rồi đi làm việc khác, kết quả về sau qua callback hay Promise. Blocking với non-blocking thì nói về việc THREAD có bị giữ hay không: blocking I/O như `fs.readFileSync` giữ chặt thread cho tới khi đọc xong, còn non-blocking như `fs.readFile` thì giao việc xuống tầng nền là libuv rồi trả quyền điều khiển lại ngay. Hai cặp này thường đi cùng nhau nhưng không đồng nghĩa. Điểm quan trọng với Node là nó chạy single-threaded trên event loop, nên chỉ một thao tác blocking là đứng cả tiến trình, không phục vụ được request nào khác. Vì thế trong Node mình luôn ưu tiên non-blocking, đặc biệt với tải I/O-bound như gọi API hay query DB, để tận dụng thời gian chờ mà xử lý việc khác."
+
+---
+
 - **Synchronous**: code chạy tuần tự, dòng sau phải đợi dòng trước xong mới chạy. **Asynchronous**: khởi động một tác vụ rồi đi làm việc khác, kết quả về sau qua callback/Promise/`async-await`.
 - **Blocking I/O**: thao tác I/O (đọc file, query DB) chặn luôn thread tới khi hoàn tất, vd `fs.readFileSync`. **Non-blocking I/O**: giao việc cho tầng nền (ở Node là libuv) rồi trả quyền điều khiển lại ngay, kết quả nhận sau qua callback, vd `fs.readFile`.
 - Lưu ý: sync/async nói về *cách viết và nhận kết quả*, còn blocking/non-blocking nói về *thread có bị giữ hay không*. Chúng thường đi cùng nhau nhưng không đồng nghĩa.
@@ -264,6 +300,12 @@ console.log('B'); // chạy trước callback
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"CommonJS là kiểu module cũ và mặc định của Node, dùng `require` với `module.exports`. Đặc điểm là nó nạp đồng bộ và tại runtime, nên mình có thể `require` ngay trong hàm hoặc theo điều kiện if. ES Modules mới là chuẩn chính thức của ngôn ngữ, dùng `import`/`export`, và điểm khác cốt lõi là `import` được phân tích TĨNH lúc compile, bắt buộc đặt ở top-level — chính nhờ tính tĩnh này mà ESM hỗ trợ tree-shaking để loại bỏ code thừa. Về cách runtime phân biệt: nếu `package.json` có `"type": "module"` thì các file `.js` được hiểu là ESM, còn không thì là CJS; muốn ép cứng từng file thì đuôi `.mjs` luôn là ESM và `.cjs` luôn là CJS. Thực tế hay vướng là file ESM không có sẵn `require`, `__dirname` hay `__filename`, và không nên trộn lẫn hai kiểu tùy tiện vì dễ dính lỗi kiểu `require is not defined`. ESM import được package CJS, nhưng chiều ngược lại CJS muốn nạp ESM thì phải dùng `import()` động vì ESM nạp bất đồng bộ."
+
+---
 
 - **CommonJS (CJS)**: `require()` + `module.exports` — kiểu module cũ, **mặc định** của Node. Nạp **đồng bộ, tại runtime** nên có thể `require` bên trong hàm hoặc theo điều kiện `if`.
 - **ES Modules (ESM)**: `import` + `export` — chuẩn chính thức của ngôn ngữ. `import` là **tĩnh, phân tích lúc compile**, phải đặt ở **top-level** → nhờ vậy hỗ trợ **tree-shaking** và `import()` động (async).
@@ -300,6 +342,12 @@ export const foo = () => {};
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Generics về bản chất là 'tham số kiểu' — giống như hàm có tham số nhận giá trị, thì generic cho phép hàm/class/type nhận thêm một kiểu (`T`) được điền vào lúc gọi. Mục đích là viết code dùng lại được với nhiều kiểu khác nhau MÀ vẫn giữ type-safe, thay vì phải dùng `any` rồi mất hết kiểm tra kiểu. Hay nhất là compiler tự suy ra `T` từ input, nên output vẫn đúng kiểu, vẫn có autocomplete và bắt lỗi lúc compile. Ví dụ một hàm `first` lấy phần tử đầu mảng: truyền mảng `number` vào thì nó tự biết trả về `number | undefined`, không cần ép gì cả. Mình thường dùng generic cho các tiện ích tái sử dụng như wrapper `ApiResponse<T>` hay hàm xử lý collection; còn nếu hàm chỉ làm với đúng một kiểu cụ thể thì không cần generic cho rối. Khi cần giới hạn đầu vào thì mình ràng buộc bằng `extends`, ví dụ `T extends { id: string }` để chắc chắn kiểu truyền vào luôn có field `id`."
+
+---
+
 - Generics cho phép viết hàm/class/type chạy được với NHIỀU kiểu mà vẫn giữ type-safe, thay vì dùng `any`. Hiểu nôm na: "tham số kiểu" (`T`) được điền lúc gọi.
 - Compiler tự suy luận (infer) `T` từ input → output giữ đúng kiểu, vẫn có autocomplete và bắt lỗi lúc compile.
 - Khi nào dùng: các wrapper/tiện ích tái sử dụng trên nhiều kiểu — `first<T>`, hàm xử lý collection, cấu trúc bao đóng dữ liệu (`Container<T>`, `Result<T>`)... Nếu một hàm chỉ làm việc với đúng một kiểu cụ thể thì KHÔNG cần generic.
@@ -325,6 +373,12 @@ function paginate<T extends { id: string }>(items: T[]): ApiResponse<T[]> {
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Cả `interface` và `type` đều dùng để mô tả shape của dữ liệu, và với object thuần thì phần lớn thay thế được cho nhau. Khác biệt thực chất nằm ở khả năng: `interface` thiên về mô tả contract của object/class, mở rộng bằng `extends`, và đặc biệt hỗ trợ declaration merging — tức là khai báo trùng tên nhiều lần sẽ được gộp lại, rất hợp khi cần augment kiểu từ thư viện. Còn `type` tổng quát hơn nhiều: nó biểu diễn được union, intersection, tuple, hay các kiểu tính toán như mapped/conditional type — những thứ `interface` không làm được. Quy tắc thực dụng của mình là: dùng `interface` cho các contract object ổn định như public API, còn `type` cho union/tuple hoặc kiểu phức tạp. Một lưu ý nhỏ là declaration merging đôi khi gây gộp ngoài ý muốn, nên nếu mình muốn chắc chắn kiểu không bị mở rộng thì `type` an toàn hơn vì trùng tên là báo lỗi ngay. Quan trọng nhất vẫn là nhất quán trong cả codebase."
+
+---
+
 - Cả hai đều mô tả shape của dữ liệu và phần lớn thay thế được cho nhau khi dùng với object thuần.
 - `interface`: mô tả shape object/class; mở rộng bằng `extends`; hỗ trợ **declaration merging** (nhiều khai báo trùng tên được gộp lại).
 - `type`: alias tổng quát hơn — biểu diễn được **union, intersection, tuple, primitive alias, mapped/conditional type**; mở rộng bằng intersection `&`.
@@ -349,6 +403,12 @@ type WithTimestamps<T> = T & { createdAt: Date };  // intersection + generic
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Ba kiểu này nằm ở hai đầu của hệ thống kiểu. `any` là tắt hoàn toàn kiểm tra kiểu — gán gì cũng được, làm gì cũng 'hợp lệ' trên compiler, và tệ nhất là nó còn lan ra: gán `any` cho biến khác thì biến đó cũng mất kiểm tra theo. `unknown` là phiên bản an toàn của `any`: nó cũng nhận mọi giá trị, nhưng compiler KHÔNG cho mình làm gì với nó cho đến khi mình narrow lại bằng `typeof`, `in`, `instanceof` hay type guard. Còn `never` là bottom type — kiểu của thứ không bao giờ tồn tại, ví dụ hàm luôn throw hoặc một nhánh switch bất khả thi; nó hay dùng cho exhaustiveness check để nếu quên xử lý một nhánh thì compiler báo lỗi luôn. Mình ưu tiên `unknown` hơn `any` vì dữ liệu từ ngoài như `JSON.parse` hay payload mạng vốn không chắc đúng kiểu; gõ `unknown` buộc mình phải validate trước khi dùng, biến một lỗi runtime tiềm ẩn thành lỗi biên dịch thấy ngay — còn `any` thì âm thầm bỏ qua và để bug lọt xuống tận production."
+
+---
 
 - `any`: tắt hoàn toàn kiểm tra kiểu — gán được mọi thứ, thao tác gì cũng "hợp lệ" trên compiler, và còn **lan ra** (gán `any` cho biến khác làm biến đó cũng mất kiểm tra). Tiện nhưng mất an toàn → nên tránh.
 - `unknown`: "top type" an toàn — cũng nhận mọi giá trị như `any`, nhưng **không cho thao tác gì** cho đến khi narrow (`typeof`, `in`, `instanceof`, type guard, ép kiểu có kiểm soát). Đây là thay thế an toàn cho `any`.
@@ -381,6 +441,12 @@ function render(s: Status): string {
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Đây là nhóm utility type giúp mình derive kiểu mới từ một kiểu gốc thay vì khai báo lại. `Partial<T>` biến mọi field thành optional, rất hợp cho hàm update/patch khi client chỉ gửi lên một phần dữ liệu. `Pick<T, K>` lấy ra một tập field từ `T`, còn `Omit<T, K>` thì ngược lại là bỏ đi một tập field — ví dụ kinh điển là type 'tạo user mới' thì `Omit` đi cái `id` vì DB tự sinh. `Record<K, V>` tạo object có key kiểu `K` và value kiểu `V`, mình hay dùng làm map tra cứu kiểu index theo `id`. Lợi ích lớn nhất là chỉ cần một source of truth duy nhất: khi kiểu `User` gốc thay đổi thì mọi kiểu dẫn xuất tự cập nhật theo, không lo lệch. Một cái bẫy cần nhớ là `Partial`, `Pick`, `Omit` chỉ tác động ở cấp một, không đệ quy — nên nếu có nested object thì các field bên trong vẫn giữ nguyên kiểu cũ."
+
+---
+
 - `Partial<T>`: biến mọi thuộc tính của `T` thành optional — hợp cho hàm update/patch nhận object một phần. `Required<T>` là chiều ngược lại.
 - `Pick<T, K>`: lấy ra một tập thuộc tính `K` từ `T`. `Omit<T, K>`: tạo type mới bằng cách bỏ đi tập thuộc tính `K` (vd type "tạo mới" bỏ `id` do DB tự sinh).
 - `Record<K, V>`: object có key thuộc kiểu `K`, value thuộc kiểu `V` — dùng cho lookup table / map tra cứu (vd index theo `id`).
@@ -404,6 +470,12 @@ type UsersById       = Record<string, User>;              // map id -> User
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Narrowing là việc TypeScript tự thu hẹp kiểu của một biến bên trong một nhánh code, dựa trên các kiểm tra runtime như `typeof`, `instanceof`, `in` hay check `=== null`. Ví dụ trong nhánh `if (typeof x === 'string')` thì compiler biết chắc `x` là `string` nên cho phép gọi `.toUpperCase()`. Custom type guard là khi mình tự định nghĩa narrowing bằng một hàm trả về kiểu đặc biệt dạng `param is Type` — gọi là type predicate; nếu hàm trả về `true` thì compiler coi biến đó là `Type` trong nhánh sau. Cái này cực kỳ hữu ích khi xử lý `unknown` từ nguồn ngoài như JSON parse hay payload mạng, để chuyển an toàn sang kiểu đã biết thay vì ép `as` một cách mù quáng. Nhưng phải cẩn thận: predicate là một 'lời hứa' với compiler — nếu logic kiểm tra bên trong sai thì compiler vẫn tin và mình tạo ra lỗ hổng kiểu. Vì vậy khi shape phức tạp mình thường dùng thư viện validate runtime như Zod để sinh guard cho chắc."
+
+---
 
 - **Narrowing**: trong một nhánh code, TypeScript tự thu hẹp kiểu của biến dựa trên kiểm tra runtime — `typeof`, `instanceof`, `in`, so sánh literal, hoặc check `=== null`/truthiness. Compiler dùng kết quả check để biết chắc kiểu trong nhánh đó.
 - **Custom type guard**: hàm trả về `param is Type` (type predicate). Nếu hàm trả `true`, compiler coi `param` là `Type` trong nhánh sau. Đây là cách tự định nghĩa narrowing khi các check built-in không đủ.
@@ -434,6 +506,12 @@ if (isUser(data)) {
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"`as const` và `satisfies` đều giúp giữ kiểu hẹp và chính xác hơn, nhưng theo cách khác nhau. `as const` ép một literal thành readonly và narrow về kiểu hẹp nhất có thể — ví dụ một string `'TODO'` sẽ giữ đúng là `'TODO'` chứ không bị widen thành `string`, mảng thì thành tuple readonly. Rất hợp cho hằng số và config cần khóa giá trị cụ thể. `satisfies` thì kiểm tra xem expression có thỏa mãn một kiểu hay không, NHƯNG không làm rộng kiểu suy diễn về kiểu đó — tức là vừa ràng buộc vừa giữ được kiểu cụ thể nhất. Điểm khác với annotation `: T` thông thường là: `: T` chỉ ràng buộc và thường làm mất thông tin chi tiết, ví dụ khai báo một object là `Record<string, ...>` thì mình mất luôn danh sách key thật nên autocomplete kém. Còn dùng `satisfies` thì vẫn check ràng buộc mà giữ nguyên các key cụ thể để autocomplete. Trong thực tế mình hay kết hợp cả hai: `as const` để khóa giá trị bất biến rồi `satisfies` để vừa validate vừa giữ kiểu hẹp cho config."
+
+---
+
 - **`as const`**: ép literal thành `readonly` và narrow về kiểu hẹp nhất — `'TODO'` thay vì `string`, mảng thành tuple `readonly [...]`. Hợp cho hằng số/config cần giữ nguyên giá trị cụ thể.
 - **`satisfies` (TS 4.9+)**: kiểm tra expression có thỏa mãn một kiểu hay không, NHƯNG không làm rộng (widen) kiểu suy diễn về kiểu đó — biến vẫn giữ kiểu cụ thể nhất.
 - **Annotation `: T`**: ép biến mang đúng kiểu `T`, nên có thể mất thông tin literal/key cụ thể (vd suy ra `Record<string, ...>` làm mất danh sách key thật, autocomplete kém).
@@ -462,6 +540,12 @@ type Role = typeof ROLES[number];           // 'OWNER' | 'MEMBER'
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Khác biệt cốt lõi là `enum` tồn tại lúc runtime còn union literal thì không. Khi mình dùng `enum`, TypeScript phát ra một object thật trong code đã compile — với numeric enum còn có cả reverse mapping — nên nó tốn thêm code sinh ra và đôi khi gây bất ngờ. Còn union literal kiểu `'TODO' | 'DONE'` chỉ tồn tại ở compile-time, zero runtime cost, narrow rất tốt và đặc biệt dễ đồng bộ với giá trị string ở nguồn ngoài như DB, JSON hay API. Xu hướng hiện nay mà mình theo là ưu tiên union literal, hoặc nếu cần một object để duyệt giá trị thì dùng `as const` object rồi derive ra union từ đó; chỉ dùng `enum` khi có lý do rõ ràng. Có `const enum` được inline nên nhẹ hơn, nhưng nó hay vướng `isolatedModules` và bundler nên thường mình tránh. Tóm lại, với phần lớn trường hợp union literal vừa nhẹ vừa an toàn hơn."
+
+---
+
 - `enum` **tồn tại lúc runtime**: TS phát ra một object thật (numeric enum còn có reverse mapping), nên tốn code sinh ra và có vài điểm gây bất ngờ.
 - Union literal (`'TODO' | 'DONE'`) chỉ tồn tại lúc **compile-time**: zero runtime cost, narrow rất tốt, dễ đồng bộ với giá trị string ở nguồn ngoài (DB, JSON, API).
 - Xu hướng hiện nay: ưu tiên **union literal** hoặc **`as const` object**; chỉ dùng `enum` khi có lý do rõ ràng. `const enum` được inline nên nhẹ, nhưng vướng `isolatedModules`/bundler nên thường tránh.
@@ -483,6 +567,12 @@ type Role = typeof Role[keyof typeof Role]; // 'OWNER' | 'MEMBER'
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình hiểu đơn giản thế này: JavaScript là một ngôn ngữ, còn để chạy được nó cần một môi trường (host). Trình duyệt là một môi trường, Node.js là một môi trường khác. Node.js là một runtime để chạy JS ở ngoài trình duyệt, dựng trên engine V8 của Google để biên dịch JS, cộng thêm thư viện libuv lo phần event loop và I/O. Cú pháp JS thì giống nhau ở cả hai nơi, khác biệt nằm ở API mà mỗi môi trường cung cấp: trên browser mình có window, document, DOM, localStorage để thao tác giao diện và bị sandbox không đụng được vào máy; còn trên Node mình có fs, http, process, Buffer để đọc file, mở server, truy cập hệ thống. Cho nên một đoạn code dùng document chỉ chạy được trên browser, còn dùng fs thì chỉ chạy được trên Node, vì mỗi bên chỉ cung cấp đúng bộ API của mình. Node hợp nhất với các tác vụ I/O-bound như API, query DB, realtime."
+
+---
 
 - **Node.js là một runtime** để chạy JavaScript ngoài trình duyệt (server, CLI, tooling), xây trên engine **V8** (biên dịch JS) + thư viện **libuv** (event loop & thread pool cho I/O) + **bindings** nối JS ↔ C/C++.
 - **JavaScript là ngôn ngữ**, còn **trình duyệt và Node.js là 2 môi trường thực thi (host) khác nhau**: cùng cú pháp JS nhưng cung cấp API/đối tượng toàn cục khác nhau.
@@ -518,6 +608,12 @@ document.querySelector('#app').textContent = 'Hello';
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Điểm mấu chốt là 'single-threaded' chỉ áp cho phần code JS của mình, chứ không áp cho phần chờ I/O. Mọi code JS chạy tuần tự trên một thread chính, nhưng những việc tốn thời gian như đọc file, query DB hay gọi API mạng thì thread chính không tự tay làm, mà giao xuống cho hệ điều hành hoặc thread pool của libuv xử lý ở dưới nền. Nhờ vậy thread chính không bị chặn, nó trả quyền điều khiển ngay và đi phục vụ request khác. Khi việc I/O xong, callback được đẩy vào hàng đợi và Event Loop sẽ lấy ra chạy mỗi khi thread chính rảnh. Mình hay ví như một đầu bếp bỏ mì vào nồi rồi đi phục vụ bàn khác, mì chín thì quay lại bưng ra, thay vì đứng nhìn nồi. Chính vì thế một thread vẫn ôm được hàng nghìn kết nối đang chờ. Nhưng mô hình này chỉ mạnh với I/O-bound; nếu gặp tác vụ CPU nặng thì nó chạy thẳng trên thread chính và sẽ chặn cả Event Loop, lúc đó phải dùng Worker Threads hoặc đẩy ra job queue."
+
+---
+
 - **JavaScript chạy trên một thread chính** — mọi code JS của bạn đều chạy tuần tự trên thread đó.
 - Nhưng các tác vụ **I/O** (đọc file, query DB, gọi API mạng) **không tự tay** thread chính làm: chúng được giao xuống cho **OS** hoặc **thread pool của libuv** xử lý nền → thread chính **không bị chặn**, đi phục vụ việc khác ngay.
 - Khi I/O xong, **callback được đẩy vào hàng đợi**; **Event Loop** lấy ra chạy mỗi khi thread chính rảnh.
@@ -540,6 +636,12 @@ console.log('B'); // in NGAY, không đợi file → thread chính rảnh phục
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Node không hợp với các tác vụ CPU-bound nặng, ví dụ xử lý ảnh/video, mã hóa hay hashing nặng, nén dữ liệu, hoặc các vòng lặp tính toán khổng lồ. Lý do là JS chạy trên một thread duy nhất với một event loop; khi mình chạy một phép tính nặng thì nó giữ chặt thread đó, làm mọi request khác phải xếp hàng chờ và cả tiến trình như đứng hình, latency tăng vọt. Cách phân biệt mình hay dùng là: I/O-bound nghĩa là phần lớn thời gian là *chờ* DB hay network, lúc đó libuv lo nền và event loop rảnh nên Node rất hợp; còn CPU-bound là phần lớn thời gian là *tính*, giữ chặt thread, nên Node yếu. Nếu vẫn buộc phải làm việc nặng trong Node thì mình sẽ offload: dùng worker_threads để tính trên thread riêng, hoặc tách ra child_process/cluster, hoặc đẩy việc nặng ra một job queue cho worker xử lý bất đồng bộ. Tóm lại Node giỏi điều phối I/O chứ không giỏi cày CPU."
+
+---
 
 - **Tác vụ CPU-bound nặng**: xử lý ảnh/video, mã hoá (encryption/hashing nặng), nén dữ liệu, tính toán khoa học, dựng PDF lớn, vòng lặp tính số khổng lồ.
 - **Lý do cốt lõi**: JS chạy trên **một thread duy nhất** (single event loop). Một tác vụ tính toán nặng **chiếm dụng (block) event loop** → mọi request/tác vụ khác phải xếp hàng chờ → cả tiến trình "đứng hình", latency tăng vọt. Node mạnh ở **I/O-bound** (chờ DB, network, file) chứ không phải ở việc "cày" CPU.
@@ -574,6 +676,12 @@ w.once('message', r => res.send(r));
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"package.json là file manifest khai báo project Node: tên, version, các scripts và danh sách thư viện phụ thuộc. Trong đó mình tách hai nhóm: dependencies là thứ cần để chạy ở production, ví dụ thư viện HTTP hay ORM client; còn devDependencies là thứ chỉ cần lúc dev hoặc build như typescript, jest, eslint, nên khi deploy mình có thể bỏ qua bằng npm ci --omit=dev cho image nhẹ hơn. Về lock file như package-lock.json hay pnpm-lock.yaml, nó khóa chính xác version của mọi package kể cả package con, để mọi máy và CI cài ra đúng cùng một cây dependency, tránh cảnh máy mình chạy mà máy người khác lỗi, nên phải commit nó vào Git. Còn semver thì theo dạng MAJOR.MINOR.PATCH: dấu ^ cho phép cập nhật trong cùng MAJOR, tức ^1.2.3 lên tới 1.9.0 nhưng không lên 2.0.0; còn ~ chặt hơn, chỉ cho cập nhật PATCH, tức ~1.2.3 chỉ lên tới 1.2.9. Nhưng range chỉ là giới hạn cho phép, nhờ lock file nên cài lại vẫn ra đúng version cũ, chỉ khi mình chủ động update mới nhảy."
+
+---
+
 - **`package.json`**: file khai báo (manifest) của một project Node — ghi `name`, `version`, các `scripts` (vd `build`, `test`, `start`) và danh sách thư viện mà project phụ thuộc.
 - **`dependencies`**: thứ cần để **chạy ở runtime/production** (vd thư viện HTTP, ORM client...).
 - **`devDependencies`**: chỉ cần lúc **phát triển hoặc build** — `typescript`, `jest`, `eslint`, bundler... Khi deploy production có thể bỏ qua nhóm này (`npm ci --omit=dev`) để image nhẹ hơn.
@@ -599,6 +707,12 @@ w.once('message', r => res.send(r));
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Lập trình hướng sự kiện nghĩa là thay vì các module gọi hàm trực tiếp lẫn nhau, một bên sẽ *phát* ra sự kiện (emit) và các bên quan tâm thì *lắng nghe* và phản ứng (on), nhờ vậy chúng được tách rời, giảm coupling. EventEmitter chính là core class của Node trong module events để làm chuyện đó, và nhiều object built-in như http.Server hay stream đều kế thừa từ nó. Mình dùng on để đăng ký listener, emit để kích hoạt, lưu ý là emit gọi các listener một cách đồng bộ theo đúng thứ tự đăng ký; ngoài ra có once chạy đúng một lần rồi tự gỡ, và off để gỡ thủ công. Mình hay dùng nó để tách các side-effect như gửi notification, logging hay audit ra khỏi luồng business logic chính. Có hai cái cần cẩn thận: một là rò rỉ listener, cứ on thêm mà quên gỡ thì số listener tăng dần và Node cảnh báo MaxListenersExceededWarning; hai là sự kiện 'error' mà không có listener nào thì Node sẽ ném và crash cả process, nên mình luôn lắng nghe 'error'."
+
+---
 
 - **Event-driven**: một bên **phát** sự kiện (`emit`), các bên khác **lắng nghe** và phản ứng (`on`) — thay vì gọi hàm trực tiếp lẫn nhau → giảm coupling.
 - `EventEmitter` là core class của Node (module `events`); nhiều object built-in kế thừa nó (vd `http.Server`, các `stream`).

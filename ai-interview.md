@@ -22,6 +22,12 @@
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Với mình, AI là một trợ lý cấp cao chứ không phải thứ thay thế lập trình viên. Nó giúp mình gõ code và làm boilerplate nhanh hơn rất nhiều, nhưng phần thiết kế, cân nhắc đánh đổi và ra quyết định kiến trúc vẫn là của mình. Mình hay nói là AI tăng tốc phần 'typing', còn phần 'thinking' thì con người vẫn phải giữ. Quan điểm này quan trọng vì nếu coi AI như người thay thế, mình sẽ ship những đoạn code mà chính mình không hiểu, dẫn đến nợ kỹ thuật và lỗ hổng bảo mật. Cuối cùng AI không chịu trách nhiệm cho sản phẩm, mình mới là người chịu, nên mình luôn giữ vai trò người định hướng và kiểm soát chất lượng."
+
+---
+
 - AI (nhất là agentic coding như Claude Code) là pair-programmer cấp cao, không thay thế tư duy: nó tạo code nhanh nhưng không chịu trách nhiệm sản phẩm.
 - Vai trò của tôi chuyển từ "gõ từng dòng" sang "định hướng, ra quyết định kiến trúc, kiểm soát chất lượng".
 - AI tăng tốc phần "typing"; phần "thinking" (thiết kế, đánh đổi, đọc hiểu hệ thống) vẫn là của tôi.
@@ -43,6 +49,12 @@ Bẫy: nhầm tốc độ gõ code với tốc độ giải quyết vấn đề.
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Sở hữu code với mình nghĩa là dù AI viết ra, mình vẫn giải thích được từng quyết định, sửa được khi nó hỏng và dám đứng ra chịu trách nhiệm trước team. Quy tắc của mình rất đơn giản: không hiểu thì không merge. Để làm được, mình đọc hết diff trước khi merge giống như đang review PR của một đồng nghiệp, và mình chia task đủ nhỏ để diff luôn ngắn, dễ đọc. Mình cũng hay dùng plan mode để duyệt hướng đi trước khi AI đụng vào code, và yêu cầu nó giải thích vì sao chọn cách đó. Quyền sở hữu thể hiện rõ nhất lúc có sự cố, khi đó người thật sự hiểu code mới là người cứu được hệ thống."
+
+---
 
 - Sở hữu code = dù AI viết, tôi giải thích được từng quyết định, sửa được khi nó hỏng, chịu trách nhiệm trước team. Quy tắc: "không hiểu thì không merge".
 - Đọc toàn bộ diff trước khi merge như review PR đồng nghiệp; AI là "đồng nghiệp" cần review.
@@ -67,6 +79,12 @@ Bẫy: code chạy đúng happy path nhưng sai edge case hoặc dùng API depre
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Rủi ro lớn nhất mình thấy là teo kỹ năng và tin mù vào AI, kiểu nhận đề xuất mà không hỏi tại sao, hoặc merge code mà không đọc. Lâu dần mình mất luôn cảm giác về hệ thống và không debug nổi khi AI sai. Để phòng tránh, mình vẫn tự tay làm những phần cốt lõi và khó để giữ tay nghề, đồng thời luôn kiểm chứng API hay khái niệm lạ bằng tài liệu chính thống thay vì tin ngay. Một điểm mình rất chú trọng là phân biệt việc tất định với việc cần suy luận: những thứ lặp đi lặp lại như format hay lint thì mình để hook trong settings.json lo, vì AI có thể quên còn harness thì luôn chạy. Còn dấu hiệu cảnh báo phụ thuộc quá mức thì mình tự soi: nếu thấy mình copy code mà không hiểu là phải dừng lại ngay."
+
+---
 
 - Rủi ro chính: teo kỹ năng (skill atrophy), mất kiến thức ngữ cảnh hệ thống, tin mù (automation bias), code "nghe có vẻ đúng" do hallucinate API, đồng nhất hóa giải pháp (luôn nhận cách "trung bình phổ biến").
 - Dấu hiệu phụ thuộc quá mức: merge code mà không đọc; không debug được khi AI offline; copy đề xuất mà không hỏi "tại sao".
@@ -93,6 +111,12 @@ Phòng tránh:
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Theo mình một prompt mạnh cần đủ bốn thứ: mục tiêu rõ, ngữ cảnh như file hoặc lỗi cụ thể, ràng buộc về thư viện và quy ước, và định dạng đầu ra mong muốn. Prompt yếu thì chỉ mô tả triệu chứng mơ hồ rồi để AI tự đoán, còn prompt mạnh thu hẹp không gian đoán bằng ngữ cảnh và ràng buộc cụ thể. Với Claude Code thì hay ở chỗ nó là agentic, mình không cần dán cả file mà chỉ cần chỉ đường dẫn và nêu mục tiêu, agent sẽ tự đọc. Nhưng đúng vì nó chủ động hành động nên mình càng phải nêu rõ ràng buộc, ví dụ cấm thêm dependency hay cấm đụng file ngoài phạm vi. Nếu prompt yếu, AI dễ tự sáng tác yêu cầu, đổi luôn cả kiến trúc mà mình không ngờ tới."
+
+---
+
 - Prompt mạnh có đủ 4 yếu tố: mục tiêu rõ, ngữ cảnh (file/lỗi/kiến trúc), ràng buộc (quy ước, thư viện, điều cấm), định dạng đầu ra (diff / chỉ sửa file X / kèm test).
 - Prompt yếu mô tả triệu chứng mơ hồ, để AI tự đoán; prompt mạnh thu hẹp không gian đoán bằng ngữ cảnh + ràng buộc cụ thể.
 - Claude Code là agentic: không cần dán cả file, chỉ cần chỉ đường dẫn và nêu mục tiêu — agent tự đọc. Nhưng vẫn phải nêu rõ ràng buộc vì agent sẽ chủ động hành động.
@@ -110,6 +134,12 @@ Phòng tránh:
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Thư mục .claude là nơi cấu hình Claude Code cho dự án, đặt trong dự án thì áp riêng cho dự án đó, còn đặt ở home thì áp toàn cục. Quan trọng nhất là CLAUDE.md, nó như bộ nhớ của dự án, nạp vào context mỗi phiên để dạy AI về quy ước, cấu trúc và lệnh hay dùng. Tiếp theo là settings.json lo phần harness như permissions, env và khai báo hooks. Còn lại thì mình phân biệt theo cách kích hoạt: commands là slash command mình chủ động gọi, skills là AI tự nạp khi thấy task phù hợp, agents là ủy thác cho một AI con chạy với context riêng, và hooks là script tự động chạy theo sự kiện. Cái mình nhấn mạnh là hooks tất định, không phụ thuộc AI có nhớ hay không, nên những việc kỷ luật lặp lại mình giao cho hooks."
+
+---
 
 - `.claude/` là nơi cấu hình Claude Code cho dự án. Đặt ở thư mục dự án → áp cho dự án đó; đặt ở `~/.claude/` (home) → áp toàn cục mọi dự án.
 
@@ -136,6 +166,12 @@ Phòng tránh:
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Mình review code AI sinh ra y như review PR của đồng nghiệp, thậm chí kỹ hơn, vì AI luôn tự tin đều đặn kể cả lúc nó sai. Quy trình của mình là đọc kỹ diff từng dòng, chạy test, lint và thử app thật, rồi tự giải thích được vì sao đoạn code này đúng trước khi merge. Lý do không thể chỉ chạy thử thấy được là merge: chạy được chỉ chứng minh happy path, nó không nói gì về edge case, lỗ hổng bảo mật hay nợ kỹ thuật. Mình hay nói là khi dùng AI thì nút thắt dịch chuyển từ viết code sang review code, nên mình dành nhiều công sức nhất cho khâu này. Bẫy lớn nhất là tưởng nhầm tốc độ sinh code bằng tốc độ giải quyết vấn đề."
+
+---
+
 - Review code AI y như review PR đồng nghiệp, thậm chí kỹ hơn: AI tự tin đều cả khi sai.
 - Nguyên tắc: đọc kỹ diff từng dòng, chạy test/lint/app thật, và tự giải thích "vì sao code này đúng" trước khi merge.
 - "Chạy được" chỉ chứng minh happy path, không phủ edge case, lỗ hổng bảo mật, hay nợ kỹ thuật.
@@ -156,6 +192,12 @@ edge case (null/rỗng/lỗi)? API bịa/deprecated? có test? khớp CLAUDE.md?
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Nguyên tắc cứng của mình là không bao giờ dán secret, khóa API, mật khẩu hay connection string thật cho AI, vì chúng có thể bị lưu trong context, log hoặc lịch sử, mà đã lộ thì coi như phải thu hồi và đổi mới hết. Trong thực tế thì secret luôn nằm trong .env đã gitignore, còn khi nói chuyện với AI mình chỉ dùng placeholder kiểu process.env.API_KEY, và tuyệt đối không đưa PII hay dữ liệu thật, cần test thì dùng dữ liệu giả. Mình cũng dựng cơ chế tất định như hook PreToolUse để chặn lệnh nguy hiểm hay in lộ secret, và cấu hình permissions trong settings.json. Mình không tin vào kiểu 'dán tạm rồi xóa', vì một khi chuỗi đã đi qua context thì không lấy lại được. Với mình, bất kỳ chuỗi nào lộ là phải thu hồi thì không bao giờ được xuất hiện trước AI."
+
+---
+
 - Nguyên tắc cứng: **không bao giờ dán secret/khóa API/mật khẩu/token/connection string thật** cho AI — chúng có thể bị lưu trong context/log/lịch sử; đã lộ là phải thu hồi (rủi ro vĩnh viễn).
 - Cách làm: secret nằm trong `.env` (đã .gitignore), minh hoạ bằng placeholder (`process.env.API_KEY`); không dán PII/dữ liệu thật; dùng dữ liệu giả.
 - Cơ chế tất định: hook `PreToolUse` chặn lệnh nguy hiểm/in lộ secret; cấu hình `permissions` trong settings.json; phần auth/crypto/thanh toán dùng skill security-review.
@@ -170,6 +212,12 @@ edge case (null/rỗng/lỗi)? API bịa/deprecated? có test? khớp CLAUDE.md?
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Hallucination thường không phải lỗi cú pháp, mà là code trông rất hợp lý nhưng AI bịa ra thứ không tồn tại, ví dụ một hàm hay tham số không có thật, một package ma, hoặc hiểu sai hành vi thư viện. Cách mình phát hiện là coi mỗi thứ AI sinh ra là một claim, còn verify là việc của mình. Mình đặt sẵn các lớp phòng thủ rẻ và sát code như TypeScript, linter và test, hallucination sẽ lộ ngay dưới dạng lỗi compile hoặc test fail. Với Claude Code thì mình yêu cầu agent tự chạy test và biên dịch, cái gì bịa ra là tự nó phơi ra. Một thứ mình rất cảnh giác là slopsquatting, kẻ xấu đăng ký sẵn những tên package mà AI hay bịa để cài mã độc, nên mỗi dependency mới mình đều kiểm tra là nó có thật, đúng tên và đủ uy tín."
+
+---
 
 - Hallucination thường không phải lỗi cú pháp: code trông hợp lý nhưng AI bịa thứ không tồn tại — API/hàm không có thật, tham số sai, package ma, hành vi thư viện bị "tưởng tượng".
 - Nguyên tắc: AI sinh ra `claim`, `verify` là việc của tôi. Đặt lớp phòng thủ rẻ sát code: TypeScript/biên dịch, linter, test.
@@ -192,6 +240,12 @@ edge case (null/rỗng/lỗi)? API bịa/deprecated? có test? khớp CLAUDE.md?
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Câu này mình trả lời rất thẳng: người đặt commit và mở PR chịu trách nhiệm hoàn toàn, tức là mình, chứ 'AI viết đoạn này' không bao giờ là lời bào chữa. Quan điểm đó định hình toàn bộ cách mình làm việc: code AI sinh ra phải qua tay mình như review PR của một junior, và mình không merge thứ mình không hiểu hay không giải thích được. Nếu gặp tình huống chạy được nhưng không hiểu vì sao, mình coi đó là cờ đỏ, hoặc đào tới khi hiểu hoặc viết lại theo cách mình kiểm soát. Mình cũng giữ các cơ chế chất lượng độc lập với AI như test, type, review của đồng đội và hook lint do harness chạy. Tóm lại, AI là người đề xuất, còn mình là người quyết định và bảo chứng, nó chuyển công việc gõ phím chứ không chuyển trách nhiệm."
+
+---
+
 - Thẳng thắn: **tôi — người đặt commit/mở PR — chịu trách nhiệm hoàn toàn.** "AI viết đoạn này" không bao giờ là lời bào chữa.
 - Nguyên tắc cứng: **không merge thứ tôi không hiểu và không giải thích được.** Code AI sinh phải qua tay tôi như review PR của một junior.
 - "Chạy được nhưng không hiểu vì sao" = cờ đỏ: hoặc đào tới khi hiểu, hoặc viết lại theo cách mình kiểm soát.
@@ -213,6 +267,12 @@ Tôi -> review, kiểm chứng, quyết định merge, chịu trách nhiệm khi
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình chọn công cụ theo quy mô và tính chất của việc, chứ không đi tìm tool nào tốt nhất. Khi chỉ gõ từng dòng hay boilerplate thì autocomplete kiểu Copilot hoặc Cursor Tab là nhanh nhất, còn sửa một đoạn theo yêu cầu cụ thể thì mình dùng inline edit. Khi việc trải ra nhiều file hoặc cả một feature, mình chuyển sang Claude Code hoặc Cursor Composer vì chúng làm việc ở tầng cao hơn. Riêng phần tự động hóa, CI hay hooks thì mình ưu tiên Claude Code vì nó mạnh ở agentic và cấu hình harness. Thông điệp mình muốn truyền tải là biết dùng đúng tool cho đúng tầng việc, đó mới là điều quan trọng chứ không phải trung thành với một công cụ duy nhất."
+
+---
 
 - Nguyên tắc: chọn theo **quy mô và tính chất** của việc, không phải "tool nào tốt nhất".
 

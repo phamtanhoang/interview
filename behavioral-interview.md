@@ -22,6 +22,12 @@
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Với mình, MVP-first nghĩa là chia một feature ra thành phiên bản nhỏ nhất mà vẫn tạo giá trị thật cho user, ship nó trước rồi lặp lại để hoàn thiện; còn bias toward shipping là thiên hướng đưa code ra production sớm, vì code chỉ thật sự có giá trị khi được dùng, và feedback thật luôn quý hơn phỏng đoán. Khi nhận một feature mới, việc đầu tiên mình làm là xác định luồng giá trị cốt lõi để chốt cái gì là MVP, mạnh dạn cắt những phần chưa cần cho lần đầu, rồi ship dọc một lát mỏng xuyên suốt từ DB lên API tới UI cho đúng một luồng đó. Mình luôn nhấn rằng MVP-first không phải là làm ẩu, bản đầu tiên vẫn phải đúng, vẫn có auth và validation, không phá luồng cũ; 'nhỏ' ở đây là về phạm vi chứ không phải về chất lượng. Cách này giúp mình ra được thứ chạy được sớm và điều chỉnh dựa trên phản hồi thật thay vì đoán mò."
+
+---
+
 - MVP-first: chia feature thành phiên bản nhỏ nhất tạo giá trị thật, ship trước rồi lặp lại để hoàn thiện.
 - Bias toward shipping: thiên hướng đưa code ra production sớm — code chỉ tạo giá trị khi dùng được, feedback thật quý hơn phỏng đoán.
 - Quy trình: (1) xác định luồng giá trị cốt lõi = MVP; (2) cắt phần chưa cần cho lần đầu; (3) ship dọc (vertical slice) DB -> API -> UI cho một luồng.
@@ -45,6 +51,12 @@ findTasks(@Query('assigneeId') assigneeId?: string) {
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Với mình 'đủ tốt để ship' không phải một con số cố định, mà phụ thuộc vào rủi ro và mức độ đảo ngược của thay đổi. Nếu thay đổi dễ đảo ngược và rủi ro thấp, kiểu đổi label hay thêm một filter trên UI, mình hạ ngưỡng và ship nhanh rồi sửa sau; nhưng nếu khó đảo ngược và rủi ro cao như migration, đổi API public hay đụng thanh toán thì mình nâng ngưỡng, test và review kỹ, thậm chí bọc feature flag. Cách mình cân bằng tốc độ với chất lượng là tách rõ phần 'phải có trước khi ship' gồm đúng, an toàn và không gây regression, ra khỏi phần 'có thì tốt' như đánh bóng hay tối ưu sớm; khi thấy mình đang trau chuốt mấy thứ 'có thì tốt' trong khi luồng chính đã ổn, đó chính là tín hiệu nên ship. Và nếu cố ý ship khi còn nợ kỹ thuật, mình luôn ghi rõ bằng TODO, ticket hoặc note trong PR để team thấy được đánh đổi, vì tốc độ có chủ đích khác hẳn với làm ẩu."
+
+---
+
 - Không phải con số cố định; phụ thuộc rủi ro và độ đảo ngược của thay đổi.
 - Dễ đảo ngược + rủi ro thấp (đổi label, thêm filter UI): ngưỡng thấp, ship nhanh, sửa sau.
 - Khó đảo ngược + rủi ro cao (migration, đổi API public, thanh toán): ngưỡng cao, test/review kỹ, cân nhắc feature flag.
@@ -65,6 +77,12 @@ findTasks(@Query('assigneeId') assigneeId?: string) {
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Over-engineering với mình là khi mình xây sẵn những lớp trừu tượng hay sự linh hoạt cho một nhu cầu chưa hề tồn tại, tức là trả phí phức tạp ngay hôm nay để đổi lấy một lợi ích chỉ là giả định. Để tránh điều đó mình bám hai nguyên tắc: YAGNI là đừng thêm khả năng cho tới khi thật sự cần, và KISS là chọn giải pháp đơn giản nhất giải quyết được vấn đề hiện tại. Trong thực tế mình hay dùng 'rule of three', tức là chấp nhận lặp code một hai lần, tới lần thứ ba khi pattern đã thật sự rõ thì mới tách abstraction, vì trừu tượng đúng phải dựa trên pattern mình đã thấy chứ không phải một tương lai tưởng tượng. Mình cũng cảnh giác một cái bẫy là nhầm 'đơn giản' với 'ngắn', vì một dòng one-liner khó đọc cũng vi phạm KISS; với mình đơn giản nghĩa là dễ hiểu và dễ sửa cho người đọc sau."
+
+---
 
 - Over-engineering: xây trừu tượng/linh hoạt cho nhu cầu chưa tồn tại — trả phí phức tạp ngay, lợi ích chỉ là giả định.
 - YAGNI: đừng thêm khả năng cho tới khi thật sự cần. KISS: chọn giải pháp đơn giản nhất giải quyết vấn đề hiện tại.
@@ -89,6 +107,12 @@ findTasks(@Query('assigneeId') assigneeId?: string) {
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Khi chia một feature lớn, nguyên tắc của mình là mỗi task nên xong được trong khoảng nửa ngày tới một ngày, có định nghĩa 'xong' rõ ràng và lý tưởng là ship hoặc merge được độc lập, tức là một vertical slice. Mình cố ý phân rã theo luồng giá trị chứ không theo tầng kỹ thuật, vì nếu chẻ thành task DB, task API, task UI riêng thì không có gì merge được cho tới tận cuối. Mình đánh dấu rõ các phụ thuộc và những chỗ còn ẩn số; với phần mơ hồ thì mình time-box một spike để tìm hiểu trước khi dám ước lượng, và chỉ cộng buffer cho đúng những ẩn số đó. Khi báo ước lượng mình nói rõ mức độ tự tin thay vì đưa một con số giả vờ chắc chắn, và mình cập nhật lại ngay khi phát hiện sai, vì với mình ước lượng là một dự báo có sai số chứ không phải một lời hứa."
+
+---
+
 - Mỗi task xong trong ~0.5-1 ngày, có định nghĩa "xong" rõ, lý tưởng là ship/merge độc lập (vertical slice).
 - Phân rã theo luồng giá trị, KHÔNG theo tầng kỹ thuật (tránh "task DB / task API / task UI" vì không merge được tới cuối).
 - Đánh dấu phụ thuộc + ẩn số; spike time-box cho phần mơ hồ trước khi ước lượng; chỉ cộng buffer cho ẩn số.
@@ -111,6 +135,12 @@ Feature: Comment trên task
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Với mình self-sufficient không có nghĩa là không bao giờ hỏi, mà là tự khai thác hết các kênh trong một khung thời gian hợp lý rồi mới hỏi, và khi hỏi thì câu hỏi đã được nén đủ ngữ cảnh. Quy trình của mình thường là đọc thật kỹ error và stack trace trước, tái hiện tối thiểu để cô lập vấn đề, đọc docs hoặc source chính thức kể cả lục vào node_modules, dùng AI để tạo giả thuyết nhưng luôn verify lại, thử nghiệm theo kiểu chỉ đổi một biến mỗi lần, và tìm trong codebase nội bộ xem có pattern tương tự chưa. Mình luôn đặt một time-box, ví dụ ba mươi tới sáu mươi phút cho lỗi non-blocking, vượt quá thì escalate; còn nếu vấn đề đang chặn cả team thì mình escalate gần như ngay lập tức. Và khi hỏi, mình luôn kèm theo 'mình đã thử X, Y, Z và kết quả ra sao' chứ không hỏi cộc lốc kiểu 'lỗi này fix sao', để người giúp tiết kiệm thời gian."
+
+---
+
 - Self-sufficient không phải không hỏi, mà tự khai thác hết các kênh trong khung thời gian hợp lý rồi mới hỏi với câu hỏi đã nén đủ ngữ cảnh.
 - Quy trình: (1) đọc kỹ error + stack trace; (2) tái hiện tối thiểu để cô lập; (3) đọc docs/source chính thức (kể cả `node_modules`); (4) dùng AI tạo giả thuyết nhưng verify; (5) thử nghiệm đổi MỘT biến mỗi lần; (6) tìm trong codebase nội bộ pattern tương tự.
 - Time-box: ví dụ 30-60 phút cho lỗi non-blocking; vượt thì escalate. Nếu CHẶN cả team thì escalate gần như ngay.
@@ -132,6 +162,12 @@ git bisect start                    # tìm commit gây regression
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Triết lý của mình là communicate sớm luôn rẻ hơn để một bất ngờ nổ ra muộn; một câu 'em sẽ trễ hai ngày' nói hôm nay quý hơn nhiều so với nói đúng vào hạn chót. Mình không đợi tới standup mà liên lạc ngay khi có dấu hiệu trễ hoặc scope phình ra, khi gặp blocker vượt quá time-box, khi requirement mơ hồ hay mâu thuẫn thì mình hỏi trước khi code, và khi một quyết định của mình ảnh hưởng tới người khác như đổi API contract hay schema dùng chung. Mình cũng để ý cách hỏi cho đúng: thay vì đặt một câu hỏi mở, mình biến nó thành câu hỏi đóng kèm phương án, đánh đổi và đề xuất của mình, để người được hỏi chỉ cần xác nhận hoặc chỉnh lại thôi. Còn với đồng đội thì mình viết PR description rõ về mục tiêu, cách tiếp cận và những chỗ cần chú ý, tôn trọng quy ước chung, và chủ động sync mỗi khi chạm vào phần của người khác."
+
+---
 
 - Communicate sớm rẻ hơn để bất ngờ nổ ra muộn; "sẽ trễ 2 ngày" nói hôm nay quý hơn nói đúng hạn.
 - Liên lạc ngay (không đợi standup) khi: sẽ trễ/scope phình; gặp blocker quá time-box; requirement mơ hồ/mâu thuẫn (hỏi TRƯỚC khi code); quyết định của mình ảnh hưởng người khác (đổi API contract/schema chung).
@@ -182,6 +218,12 @@ TỐT:  "Search em phân vân: (A) SQL ilike — đơn giản, chậm khi data l
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Nguyên tắc cốt lõi của mình khi giải thích cho người không chuyên là nói về tác động chứ không nói về cơ chế, vì PM hay sales hay khách hàng quan tâm tới ảnh hưởng lên người dùng, lên tiền và lên thời gian, chứ không quan tâm useMemo hay connection pool là gì. Mình hay dùng phép so sánh đời thường thay cho thuật ngữ, ví dụ database index thì mình ví như mục lục cuốn sách, không có thì phải lật từng trang; và mình chỉ đi sâu vào kỹ thuật nếu họ chủ động hỏi. Mình cũng cố quy mọi thứ về ngôn ngữ kinh doanh, kiểu thay vì nói 'endpoint bị N+1 nên p95 tăng' thì mình nói 'mỗi lần mở board hệ thống đang hỏi database thừa hàng trăm lần làm màn hình tải chậm, em sửa lại sẽ thấy nhanh hơn rõ rệt'. Và mình luôn đưa đánh đổi dưới dạng các lựa chọn để họ chốt, kèm số liệu hoặc demo, rồi kiểm tra lại bằng một câu 'anh chị thấy rõ chưa ạ' để chắc họ không gật gù mà quyết sai."
+
+---
 
 - Nguyên tắc cốt lõi: **nói về tác động (impact), không nói cơ chế (mechanism)** — họ quan tâm ảnh hưởng đến người dùng/tiền/thời gian, không phải `useMemo` hay "connection pool".
 - Dùng **phép so sánh đời thường (analogy)** thay vì thuật ngữ; chỉ đi sâu kỹ thuật **nếu họ hỏi**.
@@ -262,6 +304,12 @@ Ví dụ quy kỹ thuật về kinh doanh:
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Own một feature end-to-end với mình nghĩa là chịu trách nhiệm cho nó từ lúc hiểu yêu cầu cho tới khi nó chạy ổn trên production và cả sau đó nữa, chứ không phải 'viết xong rồi quăng qua tường'. Trách nhiệm của mình trải dài qua cả vòng đời: làm rõ yêu cầu, thiết kế và cân nhắc đánh đổi, triển khai xuyên tầng từ DB tới BE tới FE, lo chất lượng với test và các trạng thái loading/empty/error, đưa lên prod qua PR và review, rồi theo dõi log với metrics sau khi ship, và để lại đủ tài liệu cho việc bảo trì. Biểu hiện rõ nhất của ownership với mình là khi feature gây lỗi prod thì mình là người đầu tiên nhảy vào điều tra, không nói 'phần đó qua bên kia rồi'; nó được đo bằng việc nhận trách nhiệm lúc có sự cố chứ không chỉ nhận công lúc thành công. Nhưng own không có nghĩa là ôm hết một mình, mình vẫn nhờ review và hỏi chuyên gia như devops hay design khi cần; own nghĩa là đảm bảo feature về đích, kể cả khi phải kéo người khác vào."
+
+---
+
 - Chịu trách nhiệm feature từ lúc hiểu yêu cầu tới khi chạy ổn trên production và sau đó — không "viết xong rồi quăng qua tường".
 - Vòng đời: làm rõ yêu cầu -> thiết kế (cân nhắc đánh đổi, sync phần chung) -> triển khai xuyên tầng DB/BE/FE -> chất lượng (test, edge case, loading/empty/error) -> đưa lên prod (PR, review, deploy) -> theo dõi log/metrics sau ship -> đóng vòng (docs, để lại đủ thông tin bảo trì).
 - Biểu hiện ownership: feature gây lỗi prod thì mình là người đầu tiên nhảy vào điều tra, không nói "phần đó qua bên kia rồi". Đo bằng việc nhận trách nhiệm khi có sự cố, không chỉ nhận công.
@@ -341,6 +389,12 @@ Hiểu yêu cầu -> Thiết kế -> Code(DB/BE/FE) -> Test -> Ship -> Theo dõi
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Khi backlog vừa có tech debt vừa có tính năng mới mà sếp hay khách đang hối, mình ra quyết định dựa trên tác động kinh doanh và rủi ro chứ không theo sở thích cá nhân. Điểm mấu chốt là không phải mọi tech debt đều ngang nhau: nợ đang 'chảy máu' kiểu sinh bug liên tục, làm chậm mọi feature hay có lỗ hổng bảo mật thì mình ưu tiên cao, còn nợ chỉ khó chịu mà không thật sự cản trở thì hoãn được. Khi trình bày với stakeholder mình cố lượng hóa chi phí, thay vì nói 'code xấu' thì mình nói 'mỗi feature đụng vào module này tốn thêm hai ba ngày và hay sinh bug', để họ ra quyết định có đủ thông tin. Cách mình thực thi thường là 'đóng thuế' đều đặn, dành khoảng mười lăm tới hai mươi phần trăm mỗi sprint trả nợ, hoặc refactor từng phần ngay trên đường làm feature liên quan. Mình tránh hai thái cực 'luôn ưu tiên feature' vì thiếu trách nhiệm dài hạn và 'luôn refactor trước' vì thiếu nhạy bén kinh doanh; câu trả lời tốt nằm ở giữa, theo rủi ro nhân với tần suất gây đau."
+
+---
+
 - Câu này kiểm tra tư duy trade-off và giao tiếp — quyết định dựa trên **tác động kinh doanh & rủi ro**, không phải sở thích.
 - **Không phải mọi tech debt đều ngang nhau:** nợ đang "chảy máu" (gây bug, chậm mọi feature, rủi ro bảo mật) ưu tiên cao; nợ "khó chịu nhưng không cản trở" hoãn được.
 - **Lượng hóa chi phí:** thay vì "code xấu", nói "mỗi feature đụng module này tốn thêm 2-3 ngày và hay sinh bug".
@@ -389,6 +443,12 @@ Hiểu yêu cầu -> Thiết kế -> Code(DB/BE/FE) -> Test -> Ship -> Theo dõi
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Cách mình cập nhật kiến thức là ưu tiên nguồn chính thống và giữ sự cân bằng, vì mình không muốn chạy theo mọi thứ mới kiểu shiny object syndrome. Mình theo dõi blog và changelog của các framework như React, Next.js, NestJS, Prisma hay TanStack và đọc release notes, đồng thời theo dõi chính những người tạo ra công cụ và các RFC hay GitHub Discussions để hiểu tại sao một API ra đời, ví dụ như RSC hay React Compiler, chứ không chỉ học cú pháp. Quan trọng nhất là mình học bằng cách làm, thường dựng một side project nhỏ thử công nghệ mới trước khi dám đề xuất đưa vào dự án thật. Khi đánh giá có nên áp dụng hay không thì mình tự hỏi mấy câu: nó đã stable hay còn experimental, nó giải quyết vấn đề thật mình đang gặp hay chỉ trông hay, chi phí chuyển đổi và migration ra sao, và cộng đồng có còn bảo trì tích cực không. Với mình cập nhật là để biết và đánh giá, rồi áp dụng có chọn lọc, chứ 'luôn dùng phiên bản mới nhất' chỉ làm tăng rủi ro cho dự án."
+
+---
+
 - Câu này kiểm tra khả năng tự học **và sự cân bằng** — không chạy theo mọi thứ mới (shiny object syndrome); biết khi nào *nên* và *chưa nên* áp dụng.
 - **Nguồn chính thống:** blog/changelog của framework (React, Next.js, NestJS, Prisma, TanStack) — đọc release notes.
 - **Theo dõi người tạo công cụ** và **RFC / GitHub Discussions** để hiểu *tại sao* một API ra đời (vd RSC, React Compiler).
@@ -413,6 +473,12 @@ Hiểu yêu cầu -> Thiết kế -> Code(DB/BE/FE) -> Test -> Ship -> Theo dõi
 
 <details>
 <summary>👉 Xem câu trả lời</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Với mình, AI-native nghĩa là mặc định dùng AI để tăng tốc những việc cơ học như scaffold, sinh test, giải thích error hay khám phá một API lạ — coi nó như một junior cực nhanh nhưng đôi khi vẫn hallucinate. Còn 'có phán đoán' là mình vẫn chịu trách nhiệm cuối cho code, AI không bao giờ là cái cớ cho bug. Mình tin output của AI ở những phần dễ kiểm chứng và rủi ro thấp như boilerplate hay đổi cú pháp, vì test với compiler sẽ bắt lỗi giúp; nhưng mình bắt buộc verify khi nó gọi hàm hay tham số lạ thì mình mở docs đối chiếu ngay, khi code 'trông đúng' mà mình không giải thích được tại sao, hoặc khi đụng tới những thứ khó đảo ngược như auth, quyền, tiền hay migration phá dữ liệu. Nói ngắn gọn thì mình để AI gánh phần gõ và khám phá, nhưng tuyệt đối không outsource phán đoán kỹ thuật và trách nhiệm — quy tắc của mình là không hiểu thì không merge."
+
+---
 
 - AI-native: mặc định dùng AI tăng tốc (scaffold, test, giải thích error, refactor, khám phá API lạ).
 - Có phán đoán: tôi vẫn chịu trách nhiệm cuối cho code — AI không phải cái cớ cho bug. Xem AI như junior rất nhanh nhưng đôi khi hallucinate.
