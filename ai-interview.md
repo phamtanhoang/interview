@@ -11,8 +11,7 @@
 1. [Tư duy và vai trò của AI](#1-tư-duy-và-vai-trò-của-ai)
 2. [Prompting và dùng Claude Code thực tế](#2-prompting-và-dùng-claude-code-thực-tế)
 3. [Review, bảo mật và đánh giá output AI](#3-review-bảo-mật-và-đánh-giá-output-ai)
-4. [Câu hỏi hành vi (STAR)](#4-câu-hỏi-hành-vi-star)
-5. [Lựa chọn công cụ AI](#5-lựa-chọn-công-cụ-ai)
+4. [Lựa chọn công cụ AI](#4-lựa-chọn-công-cụ-ai)
 
 ---
 
@@ -208,59 +207,9 @@ Tôi -> review, kiểm chứng, quyết định merge, chịu trách nhiệm khi
 
 ---
 
-## 4. Câu hỏi hành vi (STAR)
+## 4. Lựa chọn công cụ AI
 
-### 4.1. Hãy mô tả quy trình hằng ngày của bạn khi dùng AI (đặc biệt là Claude Code) trong công việc phát triển phần mềm. AI xen vào những bước nào, và bạn giữ vai trò gì ở mỗi bước?
-
-<details>
-<summary>👉 Gợi ý trả lời (STAR)</summary>
-
-- **S:** Làm backend NestJS + Prisma (Jira Clone), mỗi ngày nhận task thêm tính năng/sửa bug/refactor/test; trước đây tốn nhiều thời gian gõ boilerplate và tìm code.
-- **T:** Muốn AI gánh phần cơ học và khám phá code, để dồn sức vào thiết kế và quyết định — nhưng vẫn hiểu và chịu trách nhiệm mọi thứ ship.
-- **A:** Gắn AI vào từng bước với đúng công cụ: `CLAUDE.md` nạp ngữ cảnh đầu phiên (`/clear` khi đổi task); subagent Explore để tìm code mà không phình context; plan mode duyệt hướng trước khi sửa; permission mode mặc định (hỏi trước) khi thực thi; hook PostToolUse tự lint/test; cuối cùng đọc toàn bộ diff như review PR (dùng skill code-review/security-review cho phần nhạy cảm).
-- **R:** Gõ tay giảm rõ rệt, tìm code nhanh hơn, chất lượng không giảm vì hook + review là chốt chặn; vẫn giải thích được mọi thay đổi trong PR.
-
-Lưu ý: nêu cụ thể công cụ cho từng bước để cho thấy "đúng việc dùng đúng công cụ", tránh kiểu "tôi hỏi AI rồi copy". Luôn nhấn mạnh mình là người cầm lái.
-
-</details>
-
----
-
-### 4.2. Kể về một task cụ thể mà AI giúp bạn tăng tốc đáng kể. Việc đó nếu làm tay sẽ tốn bao lâu, và bạn đã đảm bảo chất lượng không bị hy sinh như thế nào?
-
-<details>
-<summary>👉 Gợi ý trả lời (STAR)</summary>
-
-- **S:** Cần thêm validation + DTO nhất quán cho ~12 endpoint kèm test; làm tay mất khoảng 2-3 ngày vì lặp lại và dễ sai do mệt.
-- **T:** Rút ngắn thời gian nhưng không hạ chất lượng: khớp convention và có test bao phủ các luồng quan trọng.
-- **A:** Mô tả rõ pattern trong prompt, cho AI đọc ví dụ đúng convention từ `CLAUDE.md`; sinh DTO + validation + test theo từng endpoint, chia nhỏ để mỗi diff ngắn dễ review; bật hook tự chạy test; **tự viết phần edge case nghiệp vụ** (ràng buộc quyền, trạng thái hợp lệ) vì AI dễ đoán sai.
-- **R:** 2-3 ngày rút còn ~nửa ngày; test bao phủ luồng chính, hook chặn merge code đỏ test; đọc hết diff và giải thích được mọi thay đổi.
-
-Bài học: AI tăng tốc phần "typing", phần "thinking" về edge case vẫn là của mình — đó là nơi giá trị thật. Hãy gắn con số và mô tả cơ chế giữ chất lượng (diff nhỏ, hook test, tự viết edge case).
-
-</details>
-
----
-
-### 4.3. Kể về một lần AI dẫn bạn đi sai hướng — ví dụ nó bịa ra API, gợi ý một giải pháp sai tinh vi, hoặc tạo code chạy được nhưng sai bản chất. Bạn phát hiện và xử lý ra sao?
-
-<details>
-<summary>👉 Gợi ý trả lời (STAR)</summary>
-
-- **S:** Nhờ AI viết phân trang với Prisma; code trông hợp lý, chạy được trên dữ liệu nhỏ, pass test ban đầu — nhưng dùng offset đơn giản và gợi ý một option cấu hình mơ hồ là không tồn tại.
-- **T:** Xác định giải pháp có đúng và bền không trước khi đưa vào production, nhất là khi dữ liệu lớn.
-- **A:** Hai cờ đỏ khiến dừng lại: không giải thích chắc chắn được behavior khi dữ liệu lớn, và option "nghe đúng" nhưng chưa từng thấy trong tài liệu. Áp quy tắc "không hiểu thì không merge"; đối chiếu tài liệu chính thống Prisma → option đó là hallucination; nhận ra offset chậm dần khi dữ liệu lớn; yêu cầu AI giải thích lựa chọn và đề xuất cursor-based, rồi tự kiểm chứng lại.
-- **R:** Thay bằng cursor-based pagination đúng API thật, có test cho dữ liệu lớn. Bài học: kiểm chứng API lạ bằng tài liệu; không kiểm chứng được thì chưa đủ tư cách ship; test trên quy mô thực, không chỉ happy path.
-
-Lưu ý: chọn sự cố THẬT, kể rõ dấu hiệu nghi ngờ và cách kiểm chứng. Đừng đổ lỗi AI; thông điệp đúng là "trust but verify" — không phải "từ đó hết tin AI".
-
-</details>
-
----
-
-## 5. Lựa chọn công cụ AI
-
-### 5.1. Với từng loại công việc cụ thể, nên chọn công cụ nào (Copilot / Cursor / Claude Code)?
+### 4.1. Với từng loại công việc cụ thể, nên chọn công cụ nào (Copilot / Cursor / Claude Code)?
 
 <details>
 <summary>👉 Xem câu trả lời</summary>

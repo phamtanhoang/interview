@@ -32,7 +32,6 @@
 26. [Worked Examples for Core Concepts](#26-worked-examples-for-core-concepts)
 27. [GraphQL và Realtime trong NestJS](#27-graphql-và-realtime-trong-nestjs)
 28. [Tư duy và Giải quyết vấn đề (Backend)](#28-tư-duy-và-giải-quyết-vấn-đề-backend)
-29. [Kỹ năng mềm và Câu hỏi hành vi (Backend)](#29-kỹ-năng-mềm-và-câu-hỏi-hành-vi-backend)
 30. [MongoDB và Mongoose (NoSQL)](#30-mongodb-và-mongoose-nosql)
 31. [Git Workflow và Cộng tác](#31-git-workflow-và-cộng-tác)
 32. [CI/CD và Triển khai (Docker, Cloud)](#32-cicd-và-triển-khai-docker-cloud)
@@ -3120,76 +3119,6 @@ ALTER TABLE users DROP COLUMN first_name, DROP COLUMN last_name;         -- Cont
 - Nguyên tắc bao trùm: **học just-in-time** (chỉ đào sâu phần liên quan task), ghi chú khi hiểu một mảnh, để CI/test làm lưới an toàn; một thay đổi nhỏ-an-toàn đầu tiên giúp xác nhận đã hiểu vòng đời dev.
 
 </details>
-
-<details>
-<summary><b>28.12 [Hành vi] Kể về một lần bạn xử lý một sự cố production nghiêm trọng. Bạn đã làm gì? (STAR)</b></summary>
-
-- Câu hỏi muốn thấy: xử lý áp lực, điều tra có phương pháp, rút bài học. Trả lời theo **STAR**:
-- **S (Bối cảnh)**: Jira Clone một sáng API gần đứng — p99 latency từ 200ms vọt lên >8s, không deploy nào trong 12h trước.
-- **T (Nhiệm vụ)**: là người trực, phải khôi phục nhanh và tìm root cause để không tái diễn.
-- **A (Hành động)**: metrics thấy CPU DB bình thường nhưng **active connection chạm trần pool**; trace cho thấy thời gian dồn ở bước **chờ lấy connection**, không phải chạy query. Log theo correlation id lần ra một endpoint report mới bị khách lớn gọi liên tục — mở transaction dài + query thiếu index nên giữ connection lâu, cạn pool. Tức thời **rate-limit endpoint** đó để giải phóng pool; sau đó **thêm index** (xác nhận `EXPLAIN ANALYZE`), tách report nặng sang **job BullMQ**, đặt **statement timeout**.
-- **R (Kết quả)**: hồi phục ~20 phút sau rate-limit; endpoint report từ 8s xuống <300ms, không còn ảnh hưởng request khác. Viết **postmortem blameless**, thêm **alert connection pool utilization** (chính cảnh báo còn thiếu khiến phát hiện trễ).
-- **Bài học**: một query thiếu index ở endpoint phụ vẫn kéo sập cả hệ thống qua tài nguyên dùng chung (connection pool).
-
-</details>
----
-
-## 29. Kỹ năng mềm và Câu hỏi hành vi (Backend)
-
-<details>
-<summary><b>29.3 Bạn ưu tiên trả nợ kỹ thuật (tech debt) hay làm tính năng mới như thế nào? Lấy ví dụ một quyết định cụ thể. (STAR)</b></summary>
-
-- **S**: Module `notifications` (Jira Clone) gửi email/Socket.IO **đồng bộ** trong request handler, không qua queue; team đang gấp ra tính năng.
-- **T**: Cân giữa trả nợ (tách ra BullMQ) và yêu cầu thêm notification mới từ PM.
-- **A**: Quy nợ kỹ thuật về **tác động kinh doanh** (gửi đồng bộ làm p95 mutation tăng, fail khi SMTP chậm). Nguyên tắc: ưu tiên debt **gây đau định kỳ** hoặc **chặn tính năng tương lai**; debt "xấu nhưng vô hại" ghi backlog. Áp "Boy Scout Rule" cho phần còn lại; refactor notification sang BullMQ vừa trả nợ vừa mở đường cho job type mới.
-- **R**: Endpoint mutation nhanh/ổn định hơn; thêm notification mới = thêm 1 job type. Chốt nguyên tắc: ưu tiên debt theo **rủi ro × tần suất đau**, gắn trả nợ vào tính năng đang làm.
-
-</details>
-
-<details>
-<summary><b>29.4 Kể về một lần bạn bất đồng với Frontend / PM về API contract. Bạn giải quyết thế nào? (STAR)</b></summary>
-
-- **S**: FE muốn `GET /issues` trả **toàn bộ** issue kèm comments/assignees/attachments lồng nhau; tôi lo payload phình to + N+1.
-- **T**: Thống nhất contract vừa đáp ứng UI vừa giữ hiệu năng.
-- **A**: Không nói "không" cụt; giải thích bằng **dữ liệu** (payload vài MB chậm cả mobile). Đề xuất dung hòa: `GET /issues` trả list **gọn** + cursor, chi tiết nặng qua `GET /issues/:id`; nếu cần linh hoạt thì dùng **GraphQL** để FE tự chọn field. Viết contract ra **OpenAPI/Swagger** làm nguồn chân lý, duyệt từng field với FE+PM (lightweight ADR).
-- **R**: Chốt list gọn + cursor, detail riêng; p95 ổn định, FE đủ data. Lập thói quen **review contract trước khi code**.
-- Điểm nhấn: giải quyết bất đồng bằng dữ liệu + phương án thay thế, không tranh thắng-thua.
-
-</details>
-
-<details>
-<summary><b>29.5 Làm sao bạn giải thích một vấn đề kỹ thuật phức tạp cho người không chuyên (PM, sales, khách hàng)?</b></summary>
-
-- Nguyên tắc: **bắt đầu từ tác động (impact), không từ cơ chế** — họ quan tâm user/tiền/thời gian, không quan tâm "connection pool".
-- Dùng **phép so sánh đời thường (analogy)** thay vì thuật ngữ; chỉ đi sâu kỹ thuật **nếu họ hỏi**.
-- Luôn cho họ một quyết định cần chốt với trade-off rõ ràng.
-
-| Khái niệm kỹ thuật | Cách nói cho người không chuyên |
-|--------------------|----------------------------------|
-| Background job / BullMQ | "Gọi món rồi nhận số thứ tự — có món sẽ báo, khỏi đứng chờ." |
-| Database index | "Như mục lục cuốn sách — không có thì phải lật từng trang." |
-| Cache (Redis) | "Để sẵn câu trả lời hay hỏi trên bàn, khỏi vào kho lấy." |
-
-```text
-❌ "Endpoint bị N+1 nên p95 latency tăng do round-trip tới Postgres."
-✅ "Mỗi lần mở board, hệ thống hỏi database thừa hàng trăm lần → màn hình
-    tải chậm. Tôi sửa để hỏi gọn lại, user sẽ thấy nhanh hơn rõ rệt."
-```
-
-</details>
-
-<details>
-<summary><b>29.11 Kể về một lần bạn nhận sai và sửa một quyết định kỹ thuật của chính mình. (STAR)</b></summary>
-
-- **S**: Trong Jira Clone, tôi cache danh sách issue của board trong Redis với TTL cố định 60s để giảm tải Postgres.
-- **T**: Giảm tải DB nhưng giữ board "đủ tươi" cho cộng tác real-time.
-- **A**: Sau release, user phàn nàn kéo thả xong người khác chờ tới 60s mới thấy — phá real-time. Tôi **thừa nhận TTL sai cho use-case cộng tác**, không bảo vệ. Đổi sang **cache invalidation theo event** (mutation thì xóa/cập nhật key cache board đó) + push qua Socket.IO; key per-board, invalidate trong cùng flow update.
-- **R**: Board cập nhật gần tức thì, tải DB vẫn thấp.
-- Điểm nhấn: TTL hợp dữ liệu ít đổi/đọc nhiều, không hợp dữ liệu cộng tác; sẵn sàng đảo quyết định của chính mình theo bằng chứng là dấu hiệu senior.
-
-</details>
-
----
 
 ## 30. MongoDB và Mongoose (NoSQL)
 
