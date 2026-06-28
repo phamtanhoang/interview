@@ -19,9 +19,9 @@
 <details>
 <summary>👉 Xem câu trả lời</summary>
 
-**📌 Câu trả lời mẫu (cách nói dễ hiểu trong phỏng vấn):**
+**📌 Câu trả lời mẫu:**
 
-"Mình ví runtime như một quán ăn chỉ có MỘT nhân viên phục vụ (1 thread). Khách gọi món nấu lâu (= I/O: query DB, đọc file) thì nhân viên không đứng đợi mà đưa phiếu cho bếp lo, rồi quay ra phục vụ khách khác; món xong mới bưng ra (= chạy callback). **Event loop** chính là vòng lặp nhân viên liên tục hỏi 'có việc nào sẵn sàng chưa' để lấy ra chạy — nhờ đó một thread vẫn phục vụ được nhiều việc mà không bị đứng khi chờ I/O.
+"Node chạy trên một thread duy nhất, nên nó không tự làm việc nặng mà giao cho hệ thống lo, rồi đăng ký một callback để chạy khi xong. Event loop là vòng lặp liên tục lấy các callback đã sẵn sàng ra chạy — nhờ vậy một thread vẫn phục vụ được nhiều request mà không bị đứng khi chờ I/O.
 
 Callback chia hai loại: **macrotask** (`setTimeout`, `setImmediate`, I/O callback) — mỗi lượt làm một cái; và **microtask** (`Promise.then`, code sau `await`, `queueMicrotask`) — việc vặt phải làm xong NGAY. Quy tắc vàng: chạy xong một macrotask thì **vét sạch toàn bộ microtask** rồi mới sang macrotask kế, nên `Promise` luôn chạy trước `setTimeout`. Riêng `process.nextTick` (Node) ưu tiên cao nhất, chen trước cả Promise.
 
