@@ -4,7 +4,7 @@
 > Bấm vào từng câu hỏi để mở đáp án + ví dụ. File này được làm giàu dần sau mỗi bài học.
 
 ## Mục lục
-1. [Node.js Core & Event Loop](#1-nodejs-core--event-loop)
+1. [Middleware (Express) nền tảng](#1-middleware-express-nền-tảng)
 2. [NestJS Architecture & Dependency Injection](#2-nestjs-architecture--dependency-injection)
 3. [Configuration & Environment](#3-configuration--environment)
 4. [Database, TypeORM & Entities](#4-database-typeorm--entities)
@@ -24,7 +24,7 @@
 18. [Advanced NestJS](#18-advanced-nestjs)
 19. [Database, Transactions and Concurrency](#19-database-transactions-and-concurrency)
 20. [Advanced Node.js](#20-advanced-nodejs)
-21. [TypeScript for Backend](#21-typescript-for-backend)
+21. [Decorators & Reflect-metadata (NestJS DI)](#21-decorators--reflect-metadata-nestjs-di)
 22. [Advanced Testing](#22-advanced-testing)
 23. [System Design and Scaling](#23-system-design-and-scaling)
 24. [API and REST Design](#24-api-and-rest-design)
@@ -40,181 +40,7 @@
 
 ---
 
-## 1. Node.js Core & Event Loop
-
-<details>
-<summary><b>1.1 Node.js là gì? Khác gì với JavaScript chạy trên trình duyệt?</b></summary>
-
-- **Runtime** chạy JavaScript ngoài trình duyệt, xây trên engine **V8** + thư viện **libuv** (event loop & thread pool cho I/O) + **bindings** (JS ↔ C++).
-- Node có API hệ thống (`fs`, `http`, `process`, `Buffer`) thay cho `window`, `document`, `DOM`.
-- Mô hình: **single-threaded, non-blocking I/O, event-driven** → hợp ứng dụng I/O-bound (API, realtime).
-
-</details>
-
-<details>
-<summary><b>1.2 Node single-threaded mà sao xử lý được hàng nghìn request đồng thời?</b></summary>
-
-- JavaScript chạy trên **một thread chính**.
-- Các tác vụ **I/O** (DB, API, file) được giao cho OS / thread pool của **libuv** xử lý nền, **không chặn** thread chính.
-- I/O xong → callback đẩy vào hàng đợi, **Event Loop** chạy khi thread chính rảnh.
-- Ví dụ: đầu bếp bỏ mì vào nồi rồi phục vụ khách khác thay vì đứng đợi.
-
-</details>
-
-<details>
-<summary><b>1.3 Thứ tự chạy: process.nextTick vs Promise.then vs setTimeout vs setImmediate?</b></summary>
-
-- **Đồng bộ chạy hết trước** → **microtask** (`process.nextTick` ưu tiên cao nhất → rồi `Promise`) → **macrotask** (`setTimeout`, `setImmediate`, I/O).
-- Sau **mỗi** macrotask, dọn sạch toàn bộ microtask rồi mới sang macrotask kế.
-
-```js
-console.log('A');                                // đồng bộ
-setTimeout(() => console.log('E'), 0);           // macrotask
-setImmediate(() => console.log('F'));            // macrotask
-Promise.resolve().then(() => console.log('D'));  // microtask
-process.nextTick(() => console.log('C'));        // microtask ưu tiên cao
-console.log('B');                                // đồng bộ
-// In ra: A, B, C, D, rồi E/F (E/F không xác định ở main module)
-```
-
-</details>
-
-<details>
-<summary><b>1.4 Khi nào KHÔNG nên dùng Node.js?</b></summary>
-
-- Với tác vụ **CPU-bound** nặng (xử lý ảnh/video, mã hoá, tính toán lớn).
-- Lý do: chúng **chặn event loop** (thread duy nhất) → cả server đứng.
-- Giải pháp: Worker Threads, child process, hàng đợi job, hoặc ngôn ngữ khác cho phần nặng.
-
-</details>
-
-<details>
-<summary><b>1.5 Đồng bộ vs bất đồng bộ là gì? Blocking vs non-blocking I/O trong Node nghĩa là gì? Vì sao Node thiên về non-blocking?</b></summary>
-
-**📌 Câu trả lời mẫu:**
-
-"Đồng bộ (synchronous) nghĩa là code chạy tuần tự, dòng sau phải đợi dòng trước xong mới chạy; còn bất đồng bộ (asynchronous) là khởi động một tác vụ rồi đi làm việc khác, khi nào xong thì nhận kết quả qua callback/Promise. Trong Node, blocking I/O là khi một thao tác I/O (đọc file, query DB) chặn luôn thread chính cho tới lúc hoàn tất, ví dụ `fs.readFileSync` — đứng đợi đọc xong file mới chạy tiếp. Ngược lại, non-blocking I/O như `fs.readFile` chỉ giao việc cho libuv xử lý nền rồi trả quyền điều khiển lại ngay, kết quả về sau qua callback. Node thiên về non-blocking vì nó chạy single-threaded: nếu một request bị block thì cả server đứng, không phục vụ được request nào khác. Nhờ non-blocking, trong lúc chờ DB trả dữ liệu thì Node vẫn xử lý được request khác, nên rất hợp với app I/O-bound. Trong Jira Clone của mình, mọi query qua Prisma đều là bất đồng bộ (`await prisma.issue.findMany()`) nên trong lúc đợi PostgreSQL, server vẫn handle các API call khác bình thường."
-
----
-
-- **Sync**: dòng sau đợi dòng trước; **Async**: khởi động rồi làm việc khác, kết quả về sau qua callback/Promise.
-- **Blocking I/O**: chặn thread chính tới khi xong (vd `fs.readFileSync`). **Non-blocking I/O**: giao cho libuv, trả quyền ngay (vd `fs.readFile`).
-- Node **single-threaded** → một thao tác blocking làm **đứng cả server** → ưu tiên non-blocking.
-- Non-blocking giúp tận dụng thời gian chờ I/O để phục vụ request khác → hợp **I/O-bound** (API, DB).
-- Trong NestJS/Prisma, các thao tác DB đều async (`await`), không chặn event loop.
-
-```js
-// Blocking — đứng đợi đọc xong file mới in "B"
-const data = fs.readFileSync('a.txt'); // chặn thread chính
-console.log('B');
-
-// Non-blocking — in "B" ngay, callback chạy sau khi đọc xong
-fs.readFile('a.txt', (err, data) => { /* dùng data ở đây */ });
-console.log('B'); // chạy trước callback
-```
-
-</details>
-
-<details>
-<summary><b>1.6 Tiến hoá từ callback → Promise → async/await: mỗi cách là gì, "callback hell" là gì, xử lý lỗi ra sao?</b></summary>
-
-**📌 Câu trả lời mẫu:**
-
-"Mình hiểu đây là ba thế hệ xử lý code bất đồng bộ trong Node. Đầu tiên là callback: mình truyền một hàm vào để gọi lại khi tác vụ xong, theo quy ước error-first là `(err, data)` — lỗi luôn nằm ở tham số đầu. Khi nhiều tác vụ phụ thuộc nhau lồng vào nhau thì code thụt vào sâu hình kim tự tháp, lặp lại check lỗi ở mỗi tầng, rất khó đọc và bảo trì — đó gọi là callback hell. Promise sinh ra để giải quyết: nó là một đối tượng đại diện cho kết quả tương lai, có thể `.then()` để nối tiếp phẳng ra và `.catch()` gom lỗi một chỗ. Async/await là cú pháp đường (syntactic sugar) trên Promise, cho phép mình viết code bất đồng bộ trông y như đồng bộ và bắt lỗi bằng `try/catch` quen thuộc. Trong Jira Clone mình dùng async/await suốt: ví dụ `const issue = await this.prisma.issue.findUnique(...)` vì Prisma trả về Promise, gọn và bắt lỗi dễ. Bản chất cả ba đều giải quyết cùng một việc, chỉ khác về độ dễ đọc và cách bắt lỗi."
-
----
-
-- **Callback**: hàm truyền vào để "gọi lại" khi xong; quy ước **error-first** `(err, data)` — kiểm lỗi qua tham số `err`.
-- **Callback hell**: callback lồng nhau nhiều tầng (pyramid of doom) → khó đọc, khó xử lý lỗi, dễ lặp code.
-- **Promise**: đối tượng cho kết quả tương lai (`pending → fulfilled/rejected`); nối phẳng bằng `.then()`, bắt lỗi tập trung bằng `.catch()`.
-- **async/await**: syntactic sugar trên Promise → viết bất đồng bộ trông như đồng bộ; bắt lỗi bằng `try/catch`.
-- Xử lý lỗi: callback → check `err`; Promise → `.catch()`; async/await → `try/catch`.
-- Prisma/NestJS đều trả Promise nên trong Jira Clone dùng `await` là chuẩn và sạch nhất.
-
-```js
-// 1) Callback (error-first) → dễ thành "callback hell"
-getUser(id, (err, user) => {
-  if (err) return handle(err);
-  getIssues(user.id, (err, issues) => {   // lồng tầng, lặp check lỗi
-    if (err) return handle(err);
-    // ...
-  });
-});
-
-// 2) Promise → phẳng, lỗi gom 1 chỗ
-getUser(id)
-  .then(user => getIssues(user.id))
-  .then(issues => /* ... */)
-  .catch(handle);
-
-// 3) async/await → như đồng bộ, dùng try/catch
-try {
-  const user = await getUser(id);
-  const issues = await getIssues(user.id);
-} catch (err) {
-  handle(err);
-}
-```
-
-</details>
-
-<details>
-<summary><b>1.7 CommonJS (require/module.exports) khác ES Modules (import/export) thế nào? Khi nào dùng cái nào, "type":"module" là gì, vì sao không trộn lẫn tuỳ tiện?</b></summary>
-
-**📌 Câu trả lời mẫu:**
-
-"Đây là hai hệ thống module của JavaScript. CommonJS là kiểu cũ mặc định của Node, dùng `require()` để nạp và `module.exports` để xuất; còn ES Modules (ESM) là chuẩn chính thức của ngôn ngữ, dùng `import`/`export`. Khác biệt cốt lõi mình hay nhớ là: CommonJS nạp **đồng bộ và tại thời điểm chạy** nên mình có thể `require` ngay trong một hàm hay theo điều kiện `if`, còn ESM thì `import` là **tĩnh, phân tích lúc biên dịch** và phải nằm ở top-level, nhờ vậy mới hỗ trợ tree-shaking và `import` bất đồng bộ. Về cách Node phân biệt hai loại: nếu trong `package.json` có `\"type\": \"module\"` thì mọi file `.js` được hiểu là ESM, không có (hoặc để `\"commonjs\"`) thì là CommonJS; ngoài ra đuôi `.mjs` luôn là ESM còn `.cjs` luôn là CommonJS. Lý do không nên trộn tuỳ tiện là vì trong file ESM không có sẵn `require`, `module.exports`, `__dirname`, `__filename`, và ngược lại file CommonJS thì không dùng được cú pháp `import` tĩnh — trộn lẫn rất dễ dính lỗi kiểu `require is not defined` hay `Cannot use import statement outside a module`. Thực tế trong Jira Clone của mình thì NestJS biên dịch TypeScript qua `tsc`, và config mặc định xuất ra **CommonJS**, nên mình ít khi phải đụng tay tới chuyện này — TypeScript cho mình viết `import` ở source rồi tự lo phần module hệ thống ở output."
-
----
-
-- **CommonJS (CJS)**: `require()` + `module.exports` — kiểu cũ, **mặc định** của Node; nạp **đồng bộ, tại runtime** nên có thể `require` trong hàm/điều kiện.
-- **ES Modules (ESM)**: `import` + `export` — chuẩn chính thức của ngôn ngữ; `import` **tĩnh**, phân tích lúc compile, phải ở **top-level** → hỗ trợ tree-shaking, `import` async.
-- **`"type": "module"` trong `package.json`**: bật để file `.js` được hiểu là **ESM**; không khai báo (hoặc `"commonjs"`) → file `.js` là **CommonJS**.
-- **Ép từng file**: đuôi `.mjs` luôn là ESM, `.cjs` luôn là CommonJS — không phụ thuộc `"type"`.
-- **Không trộn tuỳ tiện**: ESM **không có** `require`, `module.exports`, `__dirname`, `__filename`; CJS không dùng được `import` tĩnh → dễ lỗi `require is not defined` / `Cannot use import statement outside a module`.
-- **Trong NestJS/Jira Clone**: viết `import` ở TypeScript, `tsc` mặc định **compile ra CommonJS** → thường không phải lo trực tiếp.
-
-```js
-// CommonJS (mặc định)
-const fs = require('fs');
-module.exports = { foo };
-
-// ES Modules (cần "type": "module" hoặc đuôi .mjs)
-import fs from 'fs';
-export const foo = () => {};
-
-// package.json
-{ "type": "module" }   // -> mọi .js là ESM; bỏ đi -> CommonJS
-```
-
-</details>
-
-<details>
-<summary><b>1.8 package.json là gì? Phân biệt dependencies vs devDependencies, vai trò package-lock.json, và semver (^ ~) nghĩa là gì?</b></summary>
-
-**📌 Câu trả lời mẫu:**
-
-"Mình hiểu `package.json` là file khai báo của một project Node — nó ghi tên, version, các script (như `nest start`, `prisma migrate`) và danh sách thư viện mà project phụ thuộc. Trong đó `dependencies` là thứ cần để chạy ở production, ví dụ trong Jira Clone là `@nestjs/core`, `@prisma/client`; còn `devDependencies` chỉ cần lúc phát triển hoặc build thôi, ví dụ `typescript`, `prisma` (CLI), `jest`, `eslint` — khi deploy mình có thể bỏ qua nhóm này để image nhẹ hơn. `package-lock.json` thì khoá chính xác version của mọi package (kể cả package con) đã cài, để mọi máy và CI cài ra cùng một cây dependency, tránh cảnh 'máy mình chạy mà máy người khác lỗi'. Còn semver có dạng MAJOR.MINOR.PATCH, và ký hiệu `^` cho phép cập nhật lên bản mới trong cùng MAJOR (vd `^1.2.3` lấy được `1.9.0` nhưng không lên `2.0.0`), `~` chặt hơn, chỉ cho cập nhật PATCH (vd `~1.2.3` lấy được `1.2.9` nhưng không lên `1.3.0`). Nhờ có lock file nên dù để `^` thì lần cài lại vẫn ra đúng version cũ, chỉ khi mình chủ động `npm update` mới nhảy lên."
-
----
-
-- `package.json` = "chứng minh thư" của project: tên, version, `scripts`, và danh sách dependency.
-- `dependencies`: cần lúc **runtime/production** (`@nestjs/core`, `@prisma/client`, `class-validator`).
-- `devDependencies`: chỉ cần lúc **dev/build/test** (`typescript`, `prisma` CLI, `jest`, `eslint`); cài bằng `npm i -D`.
-- `package-lock.json`: **khoá version chính xác** của toàn bộ cây dependency → cài lại trên mọi máy/CI ra kết quả giống nhau (dùng `npm ci`); **phải commit** file này.
-- Semver = `MAJOR.MINOR.PATCH`: MAJOR đổi = breaking change, MINOR = thêm tính năng (tương thích ngược), PATCH = sửa lỗi.
-- `^` cho cập nhật trong cùng MAJOR; `~` chỉ cho cập nhật PATCH; ghi cứng số (không ký hiệu) = pin đúng một version.
-
-```
-"dependencies":    { "@nestjs/core": "^10.3.0" }  // 10.3.0 → tối đa <11.0.0
-"devDependencies": { "prisma": "~5.7.1" }         // 5.7.1  → tối đa <5.8.0
-
-  ^1.2.3  =>  >=1.2.3  <2.0.0   (đổi MINOR + PATCH)
-  ~1.2.3  =>  >=1.2.3  <1.3.0   (chỉ đổi PATCH)
-   1.2.3  =>  đúng 1.2.3        (pin cứng)
-```
-
-</details>
+## 1. Middleware (Express) nền tảng
 
 <details>
 <summary><b>1.9 Middleware trong Express là gì? Mô hình req → middleware → handler, vai trò của next() và vài middleware hay dùng?</b></summary>
@@ -253,40 +79,6 @@ function auth(req, res, next) {       // auth
 app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
-```
-
-</details>
-
-<details>
-<summary><b>1.10 EventEmitter và lập trình hướng sự kiện trong Node là gì? on/emit hoạt động ra sao, khi nào dùng, lưu ý rò rỉ listener?</b></summary>
-
-**📌 Câu trả lời mẫu:**
-
-"Lập trình hướng sự kiện nghĩa là một bên 'phát' ra sự kiện, còn các bên khác 'lắng nghe' và phản ứng, thay vì gọi hàm trực tiếp lẫn nhau. Trong Node, cơ chế này gói trong class `EventEmitter`: mình dùng `emitter.on('tên', handler)` để đăng ký lắng nghe, và `emitter.emit('tên', data)` để phát sự kiện kèm dữ liệu — khi `emit` chạy, Node gọi lần lượt các handler đã đăng ký cho tên đó, một cách đồng bộ. Mình hay dùng nó để tách phần phụ (side-effect) ra khỏi luồng chính: ví dụ trong Jira Clone, khi tạo xong một Issue, service `emit('issue.created', issue)`, còn một listener khác lo gửi notification hay ghi activity log, nhờ vậy hai phần không phụ thuộc chặt vào nhau. Thực tế trong NestJS mình thường không xài `EventEmitter` thô mà dùng package `@nestjs/event-emitter` với decorator `@OnEvent` cho gọn. Một lưu ý quan trọng là rò rỉ listener: nếu cứ `on` thêm handler mà quên gỡ thì số listener tăng dần, Node sẽ cảnh báo 'possible memory leak' khi vượt 10 listener cho một sự kiện. Nên mình dùng `once` cho việc chỉ cần nghe một lần, hoặc gọi `removeListener`/`off` khi không cần nữa."
-
----
-
-- Event-driven: bên **phát** sự kiện (`emit`) tách khỏi bên **xử lý** (`on`) → giảm coupling.
-- `EventEmitter` là core class của Node; nhiều object built-in kế thừa nó (vd `http.Server`, stream).
-- `on(event, fn)` đăng ký listener; `emit(event, ...args)` gọi **đồng bộ** mọi listener của event đó theo thứ tự đăng ký.
-- `once(event, fn)`: chỉ chạy 1 lần rồi tự gỡ; `off`/`removeListener`: gỡ thủ công.
-- Khi nào dùng: tách side-effect (notification, logging, audit) khỏi business logic chính; giao tiếp nội bộ giữa các phần.
-- Rò rỉ listener: thêm listener mà không gỡ → cảnh báo `MaxListenersExceededWarning` (mặc định 10/event); fix bằng `once` hoặc `off`.
-- Trong NestJS: thường dùng `@nestjs/event-emitter` (`EventEmitter2` + `@OnEvent`) thay vì dùng tay.
-
-```js
-const { EventEmitter } = require('events');
-const bus = new EventEmitter();
-
-bus.on('issue.created', (issue) => console.log('Notify:', issue.id));
-bus.once('issue.created', (issue) => console.log('Log 1 lần:', issue.id));
-
-bus.emit('issue.created', { id: 'JIRA-101' });
-// Notify: JIRA-101
-// Log 1 lần: JIRA-101
-
-// emit lần 2: chỉ còn listener 'on' chạy, listener 'once' đã tự gỡ
-bus.emit('issue.created', { id: 'JIRA-102' }); // Notify: JIRA-102
 ```
 
 </details>
@@ -2212,24 +2004,6 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
 ## 20. Advanced Node.js
 
 <details>
-<summary><b>20.1 Giải thích các phase của event loop (timers, poll, check) và sự khác biệt giữa microtask và macrotask?</b></summary>
-
-- Mỗi tick chạy tuần tự các phase: **timers** (`setTimeout`/`setInterval` hết hạn) → pending callbacks → idle/prepare → **poll** (I/O) → **check** (`setImmediate`) → close callbacks. Callback trong các phase này là **macrotask**.
-- **Microtask** không thuộc phase nào: có 2 hàng đợi ưu tiên cao hơn — `process.nextTick` (cao nhất) và Promise (`.then`, `queueMicrotask`).
-- Sau MỖI macrotask, Node drain hết `nextTick` rồi hết microtask, RỒI mới sang phase tiếp theo → microtask luôn chạy trước macrotask kế.
-- Bẫy: sinh microtask/nextTick vô hạn sẽ làm đói (starve) event loop.
-
-```js
-setTimeout(() => console.log('timeout'), 0);
-setImmediate(() => console.log('immediate'));
-Promise.resolve().then(() => console.log('promise')); // microtask: chay truoc
-// Thu tu timeout vs immediate o top-level la KHONG xac dinh
-// (chi trong I/O callback thi immediate moi luon truoc timeout)
-```
-
-</details>
-
-<details>
 <summary><b>20.4 So sánh worker_threads, cluster và child_process — khi nào dùng cái nào cho tác vụ CPU-bound?</b></summary>
 
 - **cluster**: fork nhiều process Node giống nhau, chia sẻ cổng listen; mỗi process có heap riêng (không share memory) → scale I/O-bound theo số core.
@@ -2308,56 +2082,7 @@ stream.on('error', (err) => logger.error(err)); // PHAI lang nghe, neu khong se 
 
 ---
 
-## 21. TypeScript for Backend
-
-<details>
-<summary><b>21.1 Generics là gì và khi nào bạn dùng chúng trong code backend?</b></summary>
-
-- Generics cho phép viết hàm/class/type chạy trên nhiều kiểu mà vẫn giữ type safety, thay vì `any`.
-- Compiler tự suy luận (infer) kiểu tại chỗ gọi → giữ autocomplete và bắt lỗi lúc compile.
-- Backend thường dùng cho wrapper tái sử dụng: repository, response DTO, hàm tiện ích.
-- Ràng buộc bằng `extends` (vd `<T extends { id: string }>`) để giới hạn kiểu đầu vào; `keyof T` đảm bảo field hợp lệ.
-
-```ts
-interface ApiResponse<T> { data: T; meta: { total: number }; }
-function paginate<T extends { id: string }>(items: T[]): ApiResponse<T[]> {
-  return { data: items, meta: { total: items.length } };
-}
-```
-
-</details>
-
-<details>
-<summary><b>21.3 type và interface khác nhau thế nào? Khi nào chọn cái nào?</b></summary>
-
-- `interface`: mô tả shape object/class, `extends`, hỗ trợ declaration merging (khai báo trùng tên gộp lại).
-- `type`: alias tổng quát hơn — biểu diễn được union, tuple, primitive, conditional/mapped type; mở rộng qua intersection `&`.
-- Quy tắc: `interface` cho contract object ổn định; `type` cho union/intersection/kiểu phức tạp. Shape object thuần thì gần như tương đương.
-- Lưu ý: interface dễ bị merge ngoài ý muốn → public API/augmentation ưu tiên interface; type nội bộ cần chắc không mở rộng thì an toàn hơn.
-
-```ts
-type IssueStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'; // interface khong lam duoc
-type WithTimestamps<T> = T & { createdAt: Date; updatedAt: Date };
-```
-
-</details>
-
-<details>
-<summary><b>21.5 Type guard và narrowing hoạt động ra sao? Cho ví dụ custom type guard.</b></summary>
-
-- Narrowing: TS thu hẹp kiểu trong một nhánh dựa trên kiểm tra runtime (`typeof`, `instanceof`, `in`, so sánh literal).
-- Custom type guard: hàm trả `param is Type` (type predicate); nếu trả `true`, compiler coi tham số là kiểu đó trong nhánh sau.
-- Quan trọng khi xử lý `unknown` từ input ngoài (request body, JSON parse) để chuyển an toàn sang kiểu đã biết.
-- Lưu ý: predicate là lời hứa với compiler — logic sai sẽ tạo lỗ hổng; phải kiểm tra cả sự tồn tại lẫn kiểu từng field. Phức tạp thì dùng Zod/class-validator.
-
-```ts
-function isAuthUser(x: unknown): x is AuthUser {
-  return typeof x === 'object' && x !== null &&
-    'id' in x && typeof (x as any).id === 'string';
-}
-```
-
-</details>
+## 21. Decorators & Reflect-metadata (NestJS DI)
 
 <details>
 <summary><b>21.6 Decorators + reflect-metadata liên quan thế nào đến DI của NestJS?</b></summary>
@@ -2372,52 +2097,6 @@ function isAuthUser(x: unknown): x is AuthUser {
 @Injectable()
 class IssuesController { constructor(private users: UserService) {} }
 Reflect.getMetadata('design:paramtypes', IssuesController); // [UserService]
-```
-
-</details>
-
-<details>
-<summary><b>21.7 satisfies và as const dùng để làm gì? Khác với type annotation thường?</b></summary>
-
-- `as const`: literal thành readonly và narrow về kiểu hẹp nhất (vd `'TODO'` thay vì `string`); hợp cho config/hằng số.
-- `satisfies` (TS 4.9+): kiểm tra expression thỏa mãn kiểu nhưng KHÔNG làm rộng kiểu suy diễn về kiểu đó.
-- Annotation `: T` ép biến về đúng `T`, có thể mất thông tin literal/key cụ thể; `satisfies` vừa check ràng buộc vừa giữ kiểu cụ thể nhất cho autocomplete.
-
-```ts
-type Config = Record<string, { port: number }>;
-const b = { db: { port: 5432 } } satisfies Config;
-b.db.port;  // OK, autocomplete chi biet key 'db'
-const ROLES = ['OWNER', 'MEMBER'] as const; // readonly tuple
-```
-
-</details>
-
-<details>
-<summary><b>21.8 Phân biệt unknown và any. Vì sao nên ưu tiên unknown?</b></summary>
-
-- `any` tắt hoàn toàn kiểm tra kiểu và lan ra mọi nơi → mất an toàn.
-- `unknown` là 'top type' an toàn: nhận mọi giá trị nhưng KHÔNG cho thao tác cho đến khi narrow (type guard, `typeof`, `in`, ép kiểu có kiểm soát).
-- Dữ liệu ngoài (request body, response API, `JSON.parse`) nên dùng `unknown` rồi validate — buộc xử lý trường hợp sai kiểu thay vì âm thầm bỏ qua.
-
-```ts
-function parse(json: string): unknown { return JSON.parse(json); }
-const data = parse('{}');
-if (typeof data === 'object' && data !== null && 'id' in data) { /* OK sau narrow */ }
-```
-
-</details>
-
-<details>
-<summary><b>21.9 enum và union literal: nên dùng loại nào trong backend?</b></summary>
-
-- `enum` có mặt lúc runtime: TS phát ra object thật (numeric enum có reverse mapping), tốn code và có điểm bất ngờ.
-- Union literal (`'TODO' | 'DONE'`) chỉ tồn tại lúc compile: zero runtime cost, narrow tốt, dễ đồng bộ với DB.
-- Xu hướng: ưu tiên union literal hoặc `as const` object; chỉ dùng `enum` khi có lý do rõ ràng. `const enum` inline nhưng vướng `isolatedModules`/bundler nên thường tránh.
-
-```ts
-type Status = 'TODO' | 'IN_PROGRESS' | 'DONE';
-const Role = { OWNER: 'OWNER', MEMBER: 'MEMBER' } as const;
-type Role = typeof Role[keyof typeof Role]; // 'OWNER' | 'MEMBER'
 ```
 
 </details>
