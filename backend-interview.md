@@ -88,6 +88,209 @@ console.log('B');                                // đồng bộ
 
 </details>
 
+<details>
+<summary><b>1.5 Đồng bộ vs bất đồng bộ là gì? Blocking vs non-blocking I/O trong Node nghĩa là gì? Vì sao Node thiên về non-blocking?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Đồng bộ (synchronous) nghĩa là code chạy tuần tự, dòng sau phải đợi dòng trước xong mới chạy; còn bất đồng bộ (asynchronous) là khởi động một tác vụ rồi đi làm việc khác, khi nào xong thì nhận kết quả qua callback/Promise. Trong Node, blocking I/O là khi một thao tác I/O (đọc file, query DB) chặn luôn thread chính cho tới lúc hoàn tất, ví dụ `fs.readFileSync` — đứng đợi đọc xong file mới chạy tiếp. Ngược lại, non-blocking I/O như `fs.readFile` chỉ giao việc cho libuv xử lý nền rồi trả quyền điều khiển lại ngay, kết quả về sau qua callback. Node thiên về non-blocking vì nó chạy single-threaded: nếu một request bị block thì cả server đứng, không phục vụ được request nào khác. Nhờ non-blocking, trong lúc chờ DB trả dữ liệu thì Node vẫn xử lý được request khác, nên rất hợp với app I/O-bound. Trong Jira Clone của mình, mọi query qua Prisma đều là bất đồng bộ (`await prisma.issue.findMany()`) nên trong lúc đợi PostgreSQL, server vẫn handle các API call khác bình thường."
+
+---
+
+- **Sync**: dòng sau đợi dòng trước; **Async**: khởi động rồi làm việc khác, kết quả về sau qua callback/Promise.
+- **Blocking I/O**: chặn thread chính tới khi xong (vd `fs.readFileSync`). **Non-blocking I/O**: giao cho libuv, trả quyền ngay (vd `fs.readFile`).
+- Node **single-threaded** → một thao tác blocking làm **đứng cả server** → ưu tiên non-blocking.
+- Non-blocking giúp tận dụng thời gian chờ I/O để phục vụ request khác → hợp **I/O-bound** (API, DB).
+- Trong NestJS/Prisma, các thao tác DB đều async (`await`), không chặn event loop.
+
+```js
+// Blocking — đứng đợi đọc xong file mới in "B"
+const data = fs.readFileSync('a.txt'); // chặn thread chính
+console.log('B');
+
+// Non-blocking — in "B" ngay, callback chạy sau khi đọc xong
+fs.readFile('a.txt', (err, data) => { /* dùng data ở đây */ });
+console.log('B'); // chạy trước callback
+```
+
+</details>
+
+<details>
+<summary><b>1.6 Tiến hoá từ callback → Promise → async/await: mỗi cách là gì, "callback hell" là gì, xử lý lỗi ra sao?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình hiểu đây là ba thế hệ xử lý code bất đồng bộ trong Node. Đầu tiên là callback: mình truyền một hàm vào để gọi lại khi tác vụ xong, theo quy ước error-first là `(err, data)` — lỗi luôn nằm ở tham số đầu. Khi nhiều tác vụ phụ thuộc nhau lồng vào nhau thì code thụt vào sâu hình kim tự tháp, lặp lại check lỗi ở mỗi tầng, rất khó đọc và bảo trì — đó gọi là callback hell. Promise sinh ra để giải quyết: nó là một đối tượng đại diện cho kết quả tương lai, có thể `.then()` để nối tiếp phẳng ra và `.catch()` gom lỗi một chỗ. Async/await là cú pháp đường (syntactic sugar) trên Promise, cho phép mình viết code bất đồng bộ trông y như đồng bộ và bắt lỗi bằng `try/catch` quen thuộc. Trong Jira Clone mình dùng async/await suốt: ví dụ `const issue = await this.prisma.issue.findUnique(...)` vì Prisma trả về Promise, gọn và bắt lỗi dễ. Bản chất cả ba đều giải quyết cùng một việc, chỉ khác về độ dễ đọc và cách bắt lỗi."
+
+---
+
+- **Callback**: hàm truyền vào để "gọi lại" khi xong; quy ước **error-first** `(err, data)` — kiểm lỗi qua tham số `err`.
+- **Callback hell**: callback lồng nhau nhiều tầng (pyramid of doom) → khó đọc, khó xử lý lỗi, dễ lặp code.
+- **Promise**: đối tượng cho kết quả tương lai (`pending → fulfilled/rejected`); nối phẳng bằng `.then()`, bắt lỗi tập trung bằng `.catch()`.
+- **async/await**: syntactic sugar trên Promise → viết bất đồng bộ trông như đồng bộ; bắt lỗi bằng `try/catch`.
+- Xử lý lỗi: callback → check `err`; Promise → `.catch()`; async/await → `try/catch`.
+- Prisma/NestJS đều trả Promise nên trong Jira Clone dùng `await` là chuẩn và sạch nhất.
+
+```js
+// 1) Callback (error-first) → dễ thành "callback hell"
+getUser(id, (err, user) => {
+  if (err) return handle(err);
+  getIssues(user.id, (err, issues) => {   // lồng tầng, lặp check lỗi
+    if (err) return handle(err);
+    // ...
+  });
+});
+
+// 2) Promise → phẳng, lỗi gom 1 chỗ
+getUser(id)
+  .then(user => getIssues(user.id))
+  .then(issues => /* ... */)
+  .catch(handle);
+
+// 3) async/await → như đồng bộ, dùng try/catch
+try {
+  const user = await getUser(id);
+  const issues = await getIssues(user.id);
+} catch (err) {
+  handle(err);
+}
+```
+
+</details>
+
+<details>
+<summary><b>1.7 CommonJS (require/module.exports) khác ES Modules (import/export) thế nào? Khi nào dùng cái nào, "type":"module" là gì, vì sao không trộn lẫn tuỳ tiện?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Đây là hai hệ thống module của JavaScript. CommonJS là kiểu cũ mặc định của Node, dùng `require()` để nạp và `module.exports` để xuất; còn ES Modules (ESM) là chuẩn chính thức của ngôn ngữ, dùng `import`/`export`. Khác biệt cốt lõi mình hay nhớ là: CommonJS nạp **đồng bộ và tại thời điểm chạy** nên mình có thể `require` ngay trong một hàm hay theo điều kiện `if`, còn ESM thì `import` là **tĩnh, phân tích lúc biên dịch** và phải nằm ở top-level, nhờ vậy mới hỗ trợ tree-shaking và `import` bất đồng bộ. Về cách Node phân biệt hai loại: nếu trong `package.json` có `\"type\": \"module\"` thì mọi file `.js` được hiểu là ESM, không có (hoặc để `\"commonjs\"`) thì là CommonJS; ngoài ra đuôi `.mjs` luôn là ESM còn `.cjs` luôn là CommonJS. Lý do không nên trộn tuỳ tiện là vì trong file ESM không có sẵn `require`, `module.exports`, `__dirname`, `__filename`, và ngược lại file CommonJS thì không dùng được cú pháp `import` tĩnh — trộn lẫn rất dễ dính lỗi kiểu `require is not defined` hay `Cannot use import statement outside a module`. Thực tế trong Jira Clone của mình thì NestJS biên dịch TypeScript qua `tsc`, và config mặc định xuất ra **CommonJS**, nên mình ít khi phải đụng tay tới chuyện này — TypeScript cho mình viết `import` ở source rồi tự lo phần module hệ thống ở output."
+
+---
+
+- **CommonJS (CJS)**: `require()` + `module.exports` — kiểu cũ, **mặc định** của Node; nạp **đồng bộ, tại runtime** nên có thể `require` trong hàm/điều kiện.
+- **ES Modules (ESM)**: `import` + `export` — chuẩn chính thức của ngôn ngữ; `import` **tĩnh**, phân tích lúc compile, phải ở **top-level** → hỗ trợ tree-shaking, `import` async.
+- **`"type": "module"` trong `package.json`**: bật để file `.js` được hiểu là **ESM**; không khai báo (hoặc `"commonjs"`) → file `.js` là **CommonJS**.
+- **Ép từng file**: đuôi `.mjs` luôn là ESM, `.cjs` luôn là CommonJS — không phụ thuộc `"type"`.
+- **Không trộn tuỳ tiện**: ESM **không có** `require`, `module.exports`, `__dirname`, `__filename`; CJS không dùng được `import` tĩnh → dễ lỗi `require is not defined` / `Cannot use import statement outside a module`.
+- **Trong NestJS/Jira Clone**: viết `import` ở TypeScript, `tsc` mặc định **compile ra CommonJS** → thường không phải lo trực tiếp.
+
+```js
+// CommonJS (mặc định)
+const fs = require('fs');
+module.exports = { foo };
+
+// ES Modules (cần "type": "module" hoặc đuôi .mjs)
+import fs from 'fs';
+export const foo = () => {};
+
+// package.json
+{ "type": "module" }   // -> mọi .js là ESM; bỏ đi -> CommonJS
+```
+
+</details>
+
+<details>
+<summary><b>1.8 package.json là gì? Phân biệt dependencies vs devDependencies, vai trò package-lock.json, và semver (^ ~) nghĩa là gì?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình hiểu `package.json` là file khai báo của một project Node — nó ghi tên, version, các script (như `nest start`, `prisma migrate`) và danh sách thư viện mà project phụ thuộc. Trong đó `dependencies` là thứ cần để chạy ở production, ví dụ trong Jira Clone là `@nestjs/core`, `@prisma/client`; còn `devDependencies` chỉ cần lúc phát triển hoặc build thôi, ví dụ `typescript`, `prisma` (CLI), `jest`, `eslint` — khi deploy mình có thể bỏ qua nhóm này để image nhẹ hơn. `package-lock.json` thì khoá chính xác version của mọi package (kể cả package con) đã cài, để mọi máy và CI cài ra cùng một cây dependency, tránh cảnh 'máy mình chạy mà máy người khác lỗi'. Còn semver có dạng MAJOR.MINOR.PATCH, và ký hiệu `^` cho phép cập nhật lên bản mới trong cùng MAJOR (vd `^1.2.3` lấy được `1.9.0` nhưng không lên `2.0.0`), `~` chặt hơn, chỉ cho cập nhật PATCH (vd `~1.2.3` lấy được `1.2.9` nhưng không lên `1.3.0`). Nhờ có lock file nên dù để `^` thì lần cài lại vẫn ra đúng version cũ, chỉ khi mình chủ động `npm update` mới nhảy lên."
+
+---
+
+- `package.json` = "chứng minh thư" của project: tên, version, `scripts`, và danh sách dependency.
+- `dependencies`: cần lúc **runtime/production** (`@nestjs/core`, `@prisma/client`, `class-validator`).
+- `devDependencies`: chỉ cần lúc **dev/build/test** (`typescript`, `prisma` CLI, `jest`, `eslint`); cài bằng `npm i -D`.
+- `package-lock.json`: **khoá version chính xác** của toàn bộ cây dependency → cài lại trên mọi máy/CI ra kết quả giống nhau (dùng `npm ci`); **phải commit** file này.
+- Semver = `MAJOR.MINOR.PATCH`: MAJOR đổi = breaking change, MINOR = thêm tính năng (tương thích ngược), PATCH = sửa lỗi.
+- `^` cho cập nhật trong cùng MAJOR; `~` chỉ cho cập nhật PATCH; ghi cứng số (không ký hiệu) = pin đúng một version.
+
+```
+"dependencies":    { "@nestjs/core": "^10.3.0" }  // 10.3.0 → tối đa <11.0.0
+"devDependencies": { "prisma": "~5.7.1" }         // 5.7.1  → tối đa <5.8.0
+
+  ^1.2.3  =>  >=1.2.3  <2.0.0   (đổi MINOR + PATCH)
+  ~1.2.3  =>  >=1.2.3  <1.3.0   (chỉ đổi PATCH)
+   1.2.3  =>  đúng 1.2.3        (pin cứng)
+```
+
+</details>
+
+<details>
+<summary><b>1.9 Middleware trong Express là gì? Mô hình req → middleware → handler, vai trò của next() và vài middleware hay dùng?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Middleware là một hàm nằm giữa request và route handler, có chữ ký `(req, res, next)`. Khi request đi vào, nó chạy lần lượt qua từng middleware theo thứ tự đăng ký rồi mới tới handler cuối cùng, nên mình gọi là một 'pipeline' xử lý. Mỗi middleware có thể đọc/sửa `req` và `res`, ví dụ gắn `req.user` sau khi xác thực; rồi nó gọi `next()` để chuyển quyền cho middleware kế tiếp. Nếu mình không gọi `next()` và cũng không trả response thì request sẽ bị treo, còn nếu gọi `next(err)` thì Express nhảy thẳng tới error-handling middleware. Những middleware hay dùng nhất là logging (ghi method/URL), authentication/authorization (kiểm tra JWT, chặn 401), parse body như `express.json()`, và error handler đặt cuối cùng. Bên NestJS của Jira Clone thì ý tưởng tương tự nhưng được chia rõ thành Middleware, Guard, Interceptor và Exception Filter — ví dụ check JWT thường viết bằng Guard thay vì middleware thuần."
+
+---
+
+- Middleware = hàm `(req, res, next)` chạy **giữa** request và handler, theo **đúng thứ tự đăng ký**.
+- `next()` → chuyển sang middleware/handler kế; **không** gọi `next()` và không trả response → request **treo**.
+- `next(err)` → bỏ qua phần còn lại, nhảy tới **error-handling middleware** (hàm có 4 tham số `(err, req, res, next)`).
+- Có thể **đọc/sửa** `req`/`res` (gắn `req.user`, set header) hoặc **chặn sớm** (trả 401, 400).
+- Middleware phổ biến: **log**, **auth**, body parser (`express.json()`), **error handler** (đặt cuối).
+- NestJS chia mịn hơn: Middleware / Guard / Interceptor / Exception Filter (Guard thường lo auth).
+
+```
+req ──► [log] ──► [auth] ──► [parse body] ──► handler ──► res
+            │ next()  │ next()      │ next()
+            └─ next(err) ──────────────────────► [error handler] ──► res
+
+// Ví dụ middleware log + auth (Express)
+app.use((req, res, next) => {        // log
+  console.log(req.method, req.url);
+  next();
+});
+
+function auth(req, res, next) {       // auth
+  if (!req.headers.authorization) return res.status(401).json({ msg: 'No token' });
+  req.user = verify(req.headers.authorization); // gắn vào req
+  next();
+}
+
+// error handler: 4 tham số, đặt CUỐI
+app.use((err, req, res, next) => {
+  res.status(500).json({ error: err.message });
+});
+```
+
+</details>
+
+<details>
+<summary><b>1.10 EventEmitter và lập trình hướng sự kiện trong Node là gì? on/emit hoạt động ra sao, khi nào dùng, lưu ý rò rỉ listener?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Lập trình hướng sự kiện nghĩa là một bên 'phát' ra sự kiện, còn các bên khác 'lắng nghe' và phản ứng, thay vì gọi hàm trực tiếp lẫn nhau. Trong Node, cơ chế này gói trong class `EventEmitter`: mình dùng `emitter.on('tên', handler)` để đăng ký lắng nghe, và `emitter.emit('tên', data)` để phát sự kiện kèm dữ liệu — khi `emit` chạy, Node gọi lần lượt các handler đã đăng ký cho tên đó, một cách đồng bộ. Mình hay dùng nó để tách phần phụ (side-effect) ra khỏi luồng chính: ví dụ trong Jira Clone, khi tạo xong một Issue, service `emit('issue.created', issue)`, còn một listener khác lo gửi notification hay ghi activity log, nhờ vậy hai phần không phụ thuộc chặt vào nhau. Thực tế trong NestJS mình thường không xài `EventEmitter` thô mà dùng package `@nestjs/event-emitter` với decorator `@OnEvent` cho gọn. Một lưu ý quan trọng là rò rỉ listener: nếu cứ `on` thêm handler mà quên gỡ thì số listener tăng dần, Node sẽ cảnh báo 'possible memory leak' khi vượt 10 listener cho một sự kiện. Nên mình dùng `once` cho việc chỉ cần nghe một lần, hoặc gọi `removeListener`/`off` khi không cần nữa."
+
+---
+
+- Event-driven: bên **phát** sự kiện (`emit`) tách khỏi bên **xử lý** (`on`) → giảm coupling.
+- `EventEmitter` là core class của Node; nhiều object built-in kế thừa nó (vd `http.Server`, stream).
+- `on(event, fn)` đăng ký listener; `emit(event, ...args)` gọi **đồng bộ** mọi listener của event đó theo thứ tự đăng ký.
+- `once(event, fn)`: chỉ chạy 1 lần rồi tự gỡ; `off`/`removeListener`: gỡ thủ công.
+- Khi nào dùng: tách side-effect (notification, logging, audit) khỏi business logic chính; giao tiếp nội bộ giữa các phần.
+- Rò rỉ listener: thêm listener mà không gỡ → cảnh báo `MaxListenersExceededWarning` (mặc định 10/event); fix bằng `once` hoặc `off`.
+- Trong NestJS: thường dùng `@nestjs/event-emitter` (`EventEmitter2` + `@OnEvent`) thay vì dùng tay.
+
+```js
+const { EventEmitter } = require('events');
+const bus = new EventEmitter();
+
+bus.on('issue.created', (issue) => console.log('Notify:', issue.id));
+bus.once('issue.created', (issue) => console.log('Log 1 lần:', issue.id));
+
+bus.emit('issue.created', { id: 'JIRA-101' });
+// Notify: JIRA-101
+// Log 1 lần: JIRA-101
+
+// emit lần 2: chỉ còn listener 'on' chạy, listener 'once' đã tự gỡ
+bus.emit('issue.created', { id: 'JIRA-102' }); // Notify: JIRA-102
+```
+
+</details>
+
 ---
 
 ## 2. NestJS Architecture & Dependency Injection
@@ -135,6 +338,197 @@ constructor(private readonly usersService: UsersService) {}
 - Mặc định **Singleton** (`DEFAULT`): tạo **một lần**, dùng chung toàn app.
 - `REQUEST`: mỗi request một instance.
 - `TRANSIENT`: mỗi nơi inject một instance.
+</details>
+
+<details>
+<summary><b>2.7 NestJS là gì và vì sao dùng Nest thay vì Express thuần? Đánh đổi là gì?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình hiểu NestJS là một framework Node.js xây trên nền Express (có thể đổi sang Fastify), được viết TypeScript-first và áp một kiến trúc module hoá rõ ràng. Lý do mình chọn Nest thay vì Express thuần là vì Nest là framework opinionated: nó định sẵn cách tổ chức code thành Module, Controller, Service nên cả team đi theo một cấu trúc thống nhất, dự án lớn như Jira Clone vẫn dễ đọc dễ bảo trì. Quan trọng nhất là Nest có sẵn Dependency Injection: ví dụ mình chỉ cần khai báo `PrismaService` ở constructor là Nest tự tiêm vào, không phải tự `new` và truyền tay như Express, nhờ vậy code loose coupling và rất dễ viết unit test bằng cách tiêm mock. Ngoài ra Nest tích hợp sẵn nhiều thứ như validation (DTO + ValidationPipe), Guard cho auth, Interceptor, Exception Filter mà với Express mình phải tự lắp ráp từng thư viện rời. Đánh đổi là Nest học khó hơn, nhiều khái niệm và decorator phải nắm, đồng thời 'nặng' và nhiều magic hơn Express thuần — với một service siêu nhỏ thì Express có thể gọn và linh hoạt hơn. Nhưng với một API nghiệp vụ lớn, đi đường dài thì lợi ích về cấu trúc và khả năng bảo trì của Nest vượt trội."
+
+---
+
+- **NestJS**: framework Node.js, **TypeScript-first**, mặc định chạy trên Express (đổi được sang Fastify).
+- **Opinionated + module hoá**: ép một cấu trúc thống nhất (Module/Controller/Service) → team đông, dự án lớn vẫn dễ đọc, dễ bảo trì.
+- **DI có sẵn**: khai báo dependency ở constructor, Nest tự tiêm → loose coupling, dễ test (tiêm mock).
+- **Tích hợp sẵn**: validation, Guard, Interceptor, Filter... thay vì tự ghép thư viện rời như Express.
+- **Đánh đổi**: learning curve cao, nhiều khái niệm/decorator, "nặng" và nhiều magic hơn → service siêu nhỏ thì Express gọn và linh hoạt hơn.
+
+```
+Express thuần: bạn TỰ quyết cấu trúc + TỰ new/truyền dependency + TỰ ghép từng middleware.
+NestJS:        cấu trúc CÓ SẴN + DI tự tiêm + Pipe/Guard/Interceptor/Filter tích hợp.
+            → đổi sự tự do lấy tính nhất quán & khả năng bảo trì.
+```
+
+</details>
+
+<details>
+<summary><b>2.8 Các decorator cơ bản trong NestJS làm gì (@Module, @Controller, @Injectable, @Get/@Post, @Body/@Param/@Query)? Cho ví dụ một controller nhỏ.</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Trong NestJS mình hay nói decorator là cách gắn 'nhãn' (metadata) lên class hoặc tham số để framework biết phải xử lý chúng thế nào. `@Module` khai báo một khối gom `controllers`, `providers`, `imports`, `exports` lại với nhau — ví dụ `IssuesModule` trong Jira Clone. `@Controller('issues')` đánh dấu class là nơi nhận HTTP request và đặt prefix route là `/issues`. `@Injectable()` đánh dấu một class là provider để DI container quản lý và tiêm vào nơi khác, như `IssuesService`. `@Get()`/`@Post()` map một method với HTTP verb cộng path tương ứng. Còn `@Body()` lấy body request (thường bind vào DTO), `@Param('id')` lấy route param như `/issues/:id`, và `@Query()` lấy query string như `?status=DONE`. Nhờ vậy mình không phải tự đọc `req.body` hay `req.params` thủ công, code rất gọn và rõ ràng."
+
+---
+
+- `@Module`: gom nhóm `controllers` / `providers` / `imports` / `exports` thành một khối — đơn vị tổ chức của app.
+- `@Controller('prefix')`: class xử lý HTTP, đặt prefix route chung.
+- `@Injectable()`: đánh dấu provider (service) để DI container tạo và tiêm.
+- `@Get()` / `@Post()` (và `@Patch`, `@Delete`...): map method với HTTP verb + path.
+- `@Body()`: lấy request body (hay bind vào DTO); `@Param('id')`: lấy route param; `@Query()`: lấy query string.
+- Bản chất chung: decorator chỉ gắn metadata, Nest đọc metadata đó để định tuyến và resolve dependency.
+
+```ts
+@Controller('issues')              // route prefix: /issues
+export class IssuesController {
+  constructor(private readonly issuesService: IssuesService) {} // DI tiêm vào
+
+  @Get()                           // GET /issues?status=DONE
+  findAll(@Query('status') status: string) {
+    return this.issuesService.findAll(status);
+  }
+
+  @Get(':id')                      // GET /issues/123
+  findOne(@Param('id') id: string) {
+    return this.issuesService.findOne(id);
+  }
+
+  @Post()                          // POST /issues
+  create(@Body() dto: CreateIssueDto) {
+    return this.issuesService.create(dto);
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>2.9 Một HTTP request trong NestJS đi qua những thành phần nào và theo thứ tự nào?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Khi một request đi vào NestJS, nó đi qua một chuỗi thành phần theo thứ tự cố định. Đầu tiên là **Middleware** (chạy sớm nhất, ở tầng Express), rồi đến **Guard** để kiểm tra quyền truy cập (ví dụ trong Jira Clone mình dùng `JwtAuthGuard` xác thực token), tiếp theo là **Interceptor** (phần *trước* handler), rồi **Pipe** để validate và transform dữ liệu đầu vào (ví dụ `ValidationPipe` kiểm tra DTO). Sau đó request mới tới **Route Handler** trong controller để chạy logic. Trên đường trả về, response đi ngược qua **Interceptor** (phần *sau* handler) để biến đổi output. Nếu bất kỳ bước nào ném lỗi, **Exception Filter** sẽ bắt và định dạng response lỗi. Cách nhớ đơn giản của mình là: Middleware vào trước, Filter ra sau, và Interceptor là thứ duy nhất chạy ở cả hai chiều."
+
+---
+
+- Thứ tự đi vào: **Middleware → Guard → Interceptor (pre) → Pipe → Handler**.
+- Thứ tự đi ra: **Handler → Interceptor (post) → response**; có lỗi ở bất kỳ đâu → **Exception Filter** bắt.
+- **Guard** quyết định request có được đi tiếp không (`true/false`); chạy *trước* Pipe.
+- **Pipe** validate/transform input (ví dụ DTO qua `ValidationPipe`), chạy *ngay trước* handler.
+- **Interceptor** là thành phần duy nhất bao quanh handler (chạy cả pre và post — dùng RxJS).
+- **Exception Filter** là điểm cuối cùng cho mọi lỗi, dù lỗi xảy ra ở Guard, Pipe hay Handler.
+
+```
+Request
+  → Middleware
+  → Guard          (cho qua hay chặn?)
+  → Interceptor    (pre: trước handler)
+  → Pipe           (validate/transform DTO)
+  → Route Handler  (logic trong controller/service)
+  → Interceptor    (post: biến đổi response)
+  → Response
+        │
+        └─(nếu có lỗi ở bất kỳ bước nào)─→ Exception Filter
+```
+
+</details>
+
+<details>
+<summary><b>2.10 Phân biệt Pipe, Guard, Interceptor và Exception Filter — mỗi cái dùng để làm gì và khi nào dùng?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình hình dung 4 cái này theo đúng thứ tự chúng chạy trong vòng đời request. **Guard** chạy trước, trả lời câu hỏi 'request này có được phép đi tiếp không?' — tức là authentication/authorization; ví dụ trong Jira Clone mình dùng `JwtAuthGuard` để chặn user chưa đăng nhập và `RolesGuard` để chỉ cho admin xoá project. **Pipe** chạy ngay trước handler, lo việc transform và validate dữ liệu đầu vào; ví dụ `ValidationPipe` kiểm tra DTO tạo issue, hay `ParseIntPipe` đổi `:id` từ string sang number. **Interceptor** thì bọc quanh handler, can thiệp được cả trước và sau khi handler chạy — hợp cho logging, đo thời gian, hoặc bọc lại response theo format chung. Cuối cùng **Exception Filter** chỉ kích hoạt khi có lỗi ném ra, để bắt exception và trả về response lỗi đúng chuẩn (status code, message). Nói gọn: Guard quyết định *được/không được*, Pipe lo *dữ liệu vào*, Interceptor *bọc trước/sau*, còn Filter *xử lý lỗi*. Đừng nhầm dùng Guard để validate dữ liệu hay dùng Pipe để check quyền."
+
+---
+
+- **Guard** → quyết định *cho phép hay không* (authN/authZ). Trả `true/false`. VD: `JwtAuthGuard`, `RolesGuard`.
+- **Pipe** → *transform & validate* input ngay trước handler. VD: `ValidationPipe` (DTO), `ParseIntPipe`.
+- **Interceptor** → *bọc quanh* handler, chạy **trước + sau** (logging, đo thời gian, biến đổi response).
+- **Exception Filter** → *bắt lỗi* được ném ra, trả response lỗi đúng format. VD: bắt `NotFoundException` → 404.
+- Thứ tự chạy: **Guard → Interceptor (before) → Pipe → Handler → Interceptor (after) → Filter (nếu có lỗi)**.
+- Đừng nhầm vai trò: check quyền dùng Guard (không dùng Pipe); validate body dùng Pipe (không dùng Guard).
+
+```
+Request
+  └─> Guard        (được đi tiếp?)        --reject--> Exception Filter
+        └─> Interceptor (before)
+              └─> Pipe (validate/transform input)
+                    └─> Handler (controller) --throw--> Exception Filter
+              <─ Interceptor (after / map response)
+  <─ Response
+```
+
+</details>
+
+<details>
+<summary><b>2.11 Middleware trong NestJS là gì, đăng ký thế nào, và khác Guard / Interceptor ở điểm nào?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Middleware là hàm chạy **sớm nhất** trong vòng đời request, **trước khi tới route handler**, và nó làm việc trực tiếp với object `req`/`res` của Express (giống middleware Express truyền thống). Mình thường dùng nó cho mấy việc cross-cutting ở tầng thấp như log request, gắn `requestId`, hoặc parse header. Để đăng ký, mình tạo class implement `NestMiddleware` với hàm `use(req, res, next)`, rồi khai báo trong module qua `configure(consumer)` của `MiddlewareConsumer`, chọn route áp dụng bằng `forRoutes(...)`; phải gọi `next()` để request đi tiếp. Điểm khác cốt lõi: middleware chạy *trước cả Guard*, và nó **không** thấy được context của Nest như biết handler/class nào sắp chạy hay metadata gắn bằng decorator. Còn **Guard** chạy sau middleware, có `ExecutionContext` nên dùng để quyết định cho phép request đi tiếp hay không (auth/role) — trong Jira Clone mình dùng Guard để check JWT và quyền trong project. **Interceptor** thì bọc *quanh* handler (chạy cả trước và sau), thấy được response để biến đổi hay đo latency. Nói gọn: middleware = sớm nhất + cấp Express thuần; Guard = chặn/cho qua; Interceptor = bọc và biến đổi input/output."
+
+---
+
+- **Middleware**: chạy **đầu tiên**, trước route handler và trước Guard; thao tác trực tiếp `req`/`res` (Express), **bắt buộc gọi `next()`** để đi tiếp.
+- Đăng ký bằng `configure(consumer)` trong module (`implements NestModule`) — không dùng decorator như Guard/Interceptor.
+- **Không** có `ExecutionContext` → không biết handler/controller nào sắp chạy, không đọc được metadata decorator.
+- **Guard** (sau middleware): có `ExecutionContext`, trả `true/false` để **cho qua hay chặn** (auth/role).
+- **Interceptor**: **bọc quanh** handler (trước + sau), thấy và **biến đổi** response, đo thời gian (RxJS).
+- Thứ tự: **Middleware → Guard → Interceptor (before) → Pipe → Handler → Interceptor (after)**.
+
+```ts
+// logger.middleware.ts
+@Injectable()
+export class LoggerMiddleware implements NestMiddleware {
+  use(req: Request, res: Response, next: NextFunction) {
+    console.log(`${req.method} ${req.url}`);
+    next(); // bắt buộc, nếu không request bị "treo"
+  }
+}
+
+// app.module.ts
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>2.12 DTO là gì trong NestJS? ValidationPipe + class-validator/class-transformer hoạt động ra sao và vì sao validate ở DTO lại quan trọng?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình hiểu DTO (Data Transfer Object) là một class mô tả hình dạng dữ liệu đi vào (hoặc đi ra) của API — coi như hợp đồng cho request body. Trong NestJS, mình gắn các decorator của class-validator lên từng field, ví dụ trong Jira Clone có `CreateIssueDto` với `@IsString() title` và `@IsUUID() projectId`. Khi bật `ValidationPipe` (thường bật global trong `main.ts`), mỗi request tới handler sẽ được nó kiểm tra: class-transformer dùng `transform` để biến JSON thô thành instance đúng class và ép kiểu (ví dụ `"5"` thành `5`), còn class-validator chạy các luật trên decorator; sai luật thì Nest tự trả về 400 với danh sách lỗi, mình không phải viết tay. Mình hay bật thêm `whitelist: true` để tự động loại bỏ field thừa không khai báo trong DTO, tránh dữ liệu rác lọt vào. Điều này quan trọng vì nó là tuyến phòng thủ đầu tiên ngay ở biên: service và Prisma luôn nhận dữ liệu sạch, đúng kiểu, nên giảm bug và tránh các trường hợp dữ liệu không hợp lệ chạm tới DB."
+
+---
+
+- DTO = class mô tả "hình dạng + luật" của dữ liệu vào/ra — hợp đồng API, không phải model DB (Prisma model là thứ khác).
+- `ValidationPipe` (bật global trong `main.ts`) chạy trước handler, dùng **class-transformer** + **class-validator**.
+- `transform: true` → biến plain JSON thành **instance DTO** và ép kiểu theo khai báo (vd `"5"` → `5`).
+- `whitelist: true` → tự động **xoá field không khai báo** trong DTO (chống dữ liệu thừa/rác).
+- Sai luật → Nest tự trả **400 Bad Request** kèm message lỗi, không cần check tay trong service.
+- Vì sao quan trọng: validate ở biên giúp service/Prisma luôn nhận dữ liệu **sạch & đúng kiểu** → ít bug, an toàn hơn.
+
+```ts
+// create-issue.dto.ts
+export class CreateIssueDto {
+  @IsString() @MinLength(1)
+  title: string;
+
+  @IsUUID()
+  projectId: string;
+}
+
+// main.ts — bật global
+app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+// body sai luật -> 400 tự động, không tới service
+```
+
 </details>
 
 ---
@@ -1570,27 +1964,6 @@ export class RequestContextService {
 </details>
 
 <details>
-<summary><b>18.6 Các lifecycle hooks onModuleInit và onApplicationShutdown dùng để làm gì? Làm sao bật shutdown hooks?</b></summary>
-
-- `onModuleInit`: chạy sau khi dependency của module khởi tạo xong — khởi tạo kết nối, seed data, warm cache (luôn chạy).
-- `onApplicationShutdown(signal)`: chạy khi app nhận tín hiệu dừng (SIGTERM/SIGINT) — đóng DB, flush buffer, graceful shutdown.
-- Shutdown hook chỉ kích hoạt khi gọi `app.enableShutdownHooks()`.
-- Thứ tự: init theo dependency trước; shutdown chạy ngược lại với init.
-
-```ts
-@Injectable()
-export class LogService implements OnApplicationShutdown {
-  async onApplicationShutdown(signal?: string) {
-    await this.flushBuffer(); // ghi not log con trong buffer
-  }
-}
-// main.ts
-app.enableShutdownHooks();
-```
-
-</details>
-
-<details>
 <summary><b>18.8 Dynamic module là gì? Phân biệt forRoot và forRootAsync.</b></summary>
 
 - Dynamic module: trả cấu hình động qua static method, truyền options và đăng ký provider/exports lúc runtime (nền tảng của `ConfigModule`, `JwtModule`).
@@ -1857,39 +2230,6 @@ Promise.resolve().then(() => console.log('promise')); // microtask: chay truoc
 </details>
 
 <details>
-<summary><b>20.2 process.nextTick starvation là gì và tại sao nó nguy hiểm hơn setImmediate?</b></summary>
-
-- `process.nextTick` có hàng đợi RIÊNG, drain trước cả microtask Promise và trước khi sang phase kế (ưu tiên còn cao hơn microtask).
-- Đệ quy gọi `nextTick` → hàng đợi không bao giờ rỗng → event loop bị "đói": I/O, timer, microtask đều không chạy, server treo.
-- `setImmediate` an toàn hơn: chạy ở phase **check** mỗi vòng, nên giữa các vòng phase **poll** vẫn xử lý được I/O.
-- Dùng `nextTick` cho hoãn rất ngắn (đảm bảo API luôn async); việc lặp/tính nặng nên dùng `setImmediate` hoặc worker_threads.
-
-```js
-function loop() { process.nextTick(loop); }      // treo server
-function safeLoop() { setImmediate(safeLoop); }   // KHONG chan I/O
-```
-
-</details>
-
-<details>
-<summary><b>20.3 Backpressure trong Streams là gì và cách xử lý đúng?</b></summary>
-
-- Backpressure: bên ghi (writable) tiêu thụ chậm hơn bên đọc đẩy vào → buffer dồn lại, tốn RAM, có thể OOM.
-- Cơ chế đúng: `writable.write()` trả về `false` nghĩa là buffer vượt `highWaterMark` → ngừng ghi (vd `readable.pause()`), đợi sự kiện `'drain'` rồi tiếp.
-- Thực tế nên dùng `pipe()`/`pipeline()` để tự điều phối. Ưu tiên `pipeline()` vì tự destroy + báo lỗi khi có stream lỗi (`pipe()` không làm → dễ rò file descriptor).
-
-```js
-const { pipeline } = require('node:stream/promises');
-await pipeline(
-  fs.createReadStream('big.csv'),
-  parseTransform,
-  fs.createWriteStream('out.json'),
-); // tu dong backpressure + cleanup khi error
-```
-
-</details>
-
-<details>
 <summary><b>20.4 So sánh worker_threads, cluster và child_process — khi nào dùng cái nào cho tác vụ CPU-bound?</b></summary>
 
 - **cluster**: fork nhiều process Node giống nhau, chia sẻ cổng listen; mỗi process có heap riêng (không share memory) → scale I/O-bound theo số core.
@@ -1936,22 +2276,6 @@ setInterval(() => { console.log('p99 lag(ms):', (h.percentile(99)/1e6).toFixed(2
 </details>
 
 <details>
-<summary><b>20.7 Buffer là gì, khác String thế nào, và lưu ý bảo mật khi cấp phát?</b></summary>
-
-- `Buffer` là vùng nhớ nhị phân thuần, cấp phát NGOÀI V8 heap (off-heap), không tính trong `--max-old-space-size`; dùng cho dữ liệu raw (file, socket, crypto).
-- String JS là UTF-16, immutable, không biểu diễn byte tùy ý an toàn.
-- Bảo mật: ưu tiên `Buffer.alloc(size)` (zero-fill) thay vì `allocUnsafe` (nhanh hơn nhưng vùng nhớ chưa xóa, có thể lộ dữ liệu cũ).
-- So sánh secret dùng `crypto.timingSafeEqual` (chống timing attack); hàm ném lỗi nếu khác độ dài → kiểm tra length trước.
-
-```js
-const a = Buffer.from(tokenFromCookie, 'utf8');
-const b = Buffer.from(storedToken, 'utf8');
-const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
-```
-
-</details>
-
-<details>
 <summary><b>20.8 Làm thế nào để scale một ứng dụng Node trên 1 máy (cluster/PM2) và lưu ý khi có state?</b></summary>
 
 - Logic JS chạy 1 thread → 1 process dùng 1 core. Dùng hết core bằng **cluster** hoặc **PM2** cluster (`pm2 start app.js -i max`); kernel/PM2 phân phối kết nối.
@@ -1978,22 +2302,6 @@ pm2 start dist/main.js -i max --name jira-api  # 1 process moi core, auto restar
 try { setTimeout(() => { throw new Error('boom'); }, 0); }
 catch (e) { /* khong bao gio chay -> process crash */ }
 stream.on('error', (err) => logger.error(err)); // PHAI lang nghe, neu khong se crash
-```
-
-</details>
-
-<details>
-<summary><b>20.10 AsyncLocalStorage là gì và vì sao hữu ích cho request context / tracing trong NestJS?</b></summary>
-
-- `AsyncLocalStorage` (`node:async_hooks`) lưu kho dữ liệu gắn với MỘT chuỗi async (vd vòng đời 1 request) mà không phải truyền tham số xuyên suốt.
-- Dữ liệu được bảo toàn qua ranh giới async (`await`, callback) nhờ `async_hooks`; mỗi request có "store" riêng, không lẫn.
-- Ứng dụng: gắn `requestId`/`traceId`, user, tenant vào store → logger đọc ra cho mỗi dòng log có context (tracing/correlation).
-- Lưu ý: có chi phí nhỏ; NestJS thường dùng qua `nestjs-cls`. Đừng dùng thay DI — chỉ cho cross-cutting context.
-
-```js
-const als = new AsyncLocalStorage();
-app.use((req, res, next) => als.run(new Map([['requestId', crypto.randomUUID()]]), () => next()));
-function log(msg) { console.log(`[${als.getStore()?.get('requestId')}] ${msg}`); }
 ```
 
 </details>
@@ -2030,23 +2338,6 @@ function paginate<T extends { id: string }>(items: T[]): ApiResponse<T[]> {
 ```ts
 type IssueStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'; // interface khong lam duoc
 type WithTimestamps<T> = T & { createdAt: Date; updatedAt: Date };
-```
-
-</details>
-
-<details>
-<summary><b>21.4 Discriminated union là gì và vì sao nó hữu ích khi narrowing?</b></summary>
-
-- Union của nhiều object cùng chia một field literal làm 'tag' (vd `type`/`kind`/`status`).
-- Khi switch/if theo tag, TS tự narrow về đúng nhánh và biết chính xác các field còn lại.
-- Biến các trạng thái loại trừ lẫn nhau thành kiểu an toàn; kết hợp `never` để check exhaustiveness lúc compile.
-
-```ts
-type Result =
-  | { status: 'success'; data: string }
-  | { status: 'error'; message: string };
-// switch (r.status): case 'success' biet co .data, 'error' biet co .message
-// default: const _e: never = r; -> them nhanh moi se bao loi
 ```
 
 </details>
