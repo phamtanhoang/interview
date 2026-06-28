@@ -1120,6 +1120,32 @@ async logout(userId: string, jti: string, exp: number, res: Response) {
 
 </details>
 
+<details>
+<summary><b>15.7 Phân biệt JWT, OAuth2 và Session/Cookie — chúng khác tầng nhau thế nào và khi nào dùng cái nào?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Điều mình muốn làm rõ trước là ba cái này không cùng một tầng nên không phải lựa chọn loại trừ nhau. Session/Cookie và JWT là hai cách **lưu trạng thái đăng nhập**: Session là stateful, server giữ session trong store (Redis/DB) còn client chỉ cầm một session id, nên thu hồi tức thì rất dễ nhưng mỗi request phải lookup store; JWT thì stateless, thông tin nằm trong token đã ký, server chỉ verify chữ ký không cần I/O nên scale ngang tốt, đổi lại **khó thu hồi trước hạn** vì token tự nó đã đủ hợp lệ. Còn OAuth2 thì khác hẳn — nó là một **framework ủy quyền** để app của mình xin quyền truy cập tài nguyên thay người dùng, hoặc đăng nhập qua bên thứ ba (Google, GitHub) qua OIDC; bản thân OAuth2 không nói mình phải dùng session hay JWT để giữ phiên sau đó. Trong Jira Clone của mình, sau khi user 'Login with Google' (OAuth2/OIDC) thì backend NestJS vẫn tự cấp cặp access token JWT đoản hạn + refresh token có state trong Postgres — tức là OAuth2 lo bước xác thực ban đầu, còn JWT/Session lo việc duy trì phiên. Quy tắc chọn của mình: cần thu hồi tức thì và đơn server thì Session/Redis gọn; cần scale ngang nhiều service thì JWT đoản hạn; cần đăng nhập/ủy quyền qua bên thứ ba thì OAuth2 — và thực tế thường lai cả ba."
+
+---
+
+- **Session/Cookie (stateful)**: server giữ state trong store (Redis/DB), client cầm session id -> thu hồi tức thì dễ, nhưng mỗi request phải lookup store; khó scale nếu store là điểm nghẽn.
+- **JWT (stateless)**: state nằm trong token đã ký, server chỉ verify chữ ký, không I/O -> scale ngang tốt, hợp microservice; nhược: **khó revoke trước hạn**.
+- **OAuth2 KHÁC TẦNG**: là framework **ủy quyền** (delegated authorization); thêm OIDC mới thành đăng nhập. Nó quyết định *làm sao có được danh tính/quyền*, KHÔNG quyết định *giữ phiên bằng gì sau đó*.
+- Sau OAuth2 vẫn phải chọn Session hay JWT để duy trì phiên -> ba cái **bổ sung**, không loại trừ.
+- **Đánh đổi thu hồi vs scale**: Session = revoke dễ, scale nặng store; JWT = scale nhẹ, revoke khó (phải dùng refresh token có state hoặc blocklist `jti` -> mất bớt tính stateless).
+- **Khi nào dùng**: đơn server + cần logout tức thì -> Session/Redis; nhiều service stateless -> JWT đoản hạn; login/ủy quyền qua bên thứ ba -> OAuth2 (+ thường lai JWT/refresh).
+- **Bẫy phỏng vấn**: nói "JWT vs OAuth2" như hai lựa chọn là sai — OAuth2 có thể *cấp* token (access token thường là JWT) chứ không cạnh tranh với JWT.
+
+```
+OAuth2 / OIDC  ->  (Google trả về danh tính)  ->  Backend Jira Clone tự cấp phiên
+  [tang xac thuc/uy quyen]                          |
+                                                     +-- JWT access (15m, stateless, verify chu ky)
+                                                     +-- refresh token (state trong Postgres -> revoke duoc)
+```
+
+</details>
+
 ---
 
 ## 16. Web Security
@@ -1226,6 +1252,12 @@ function sanitize(obj) {
 
 <details>
 <summary><b>16.8 Kể vài lỗ hổng OWASP Top 10 phổ biến và cách bạn phòng chống trong NestJS?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình sẽ kể vài lỗ hổng hay gặp nhất theo OWASP Top 10 và cách mình xử lý trong NestJS. Đầu tiên là Broken Access Control (A01) — đây là cái mình lo nhất: mình dùng JwtAuthGuard kết hợp RolesGuard để kiểm quyền ở server, nhưng quan trọng hơn là check object-level (chống IDOR), ví dụ trong Jira Clone thì user chỉ được xem/sửa issue thuộc project mà họ là thành viên, chứ không chỉ dựa vào role chung. Với Injection (A03) mình dùng Prisma nên query đã được parameterized sẵn, cộng thêm class-validator để validate input đầu vào. Về Auth Failures (A07) mình hash password bằng bcrypt/argon2 chứ không bao giờ lưu plaintext hay MD5, có rate limit cho login và refresh token rotation. Còn Security Misconfiguration (A05) thì mình bật helmet, tắt stack trace chi tiết ở prod, và không để Swagger public trên production. Nguyên tắc xuyên suốt của mình là least privilege và defense-in-depth — không tin một lớp bảo vệ duy nhất, ví dụ vừa check quyền ở guard vừa check lại ownership trong service."
+
+---
 
 - **A01 Broken Access Control**: RBAC + guard, kiểm quyền ở server, cả object-level (IDOR — user chỉ truy cập resource của mình).
 - **A03 Injection**: parameterized query/Prisma + validation.
@@ -1611,6 +1643,12 @@ ConfigModule.forRoot({
 <details>
 <summary><b>19.1 $transaction trong Prisma hoạt động thế nào và nó đảm bảo ACID ra sao?</b></summary>
 
+**📌 Câu trả lời mẫu:**
+
+"$transaction của Prisma về bản chất là gom nhiều query vào một transaction DB — hoặc tất cả commit, hoặc rollback hết nếu có lỗi. Cần nói rõ là ACID được đảm bảo ở tầng PostgreSQL chứ Prisma chỉ làm nhiệm vụ mở BEGIN/COMMIT/ROLLBACK thôi. Có hai dạng: sequential, tức truyền vào một mảng query chạy tuần tự không chèn được logic JS; và interactive, truyền vào một callback async tx => {...} cho phép mình viết logic giữa các bước. Trong Jira Clone mình hay dùng interactive, ví dụ khi tạo issue thì vừa increment counter của project vừa insert issue trong cùng transaction để đảm bảo issue key không bị lệch. Cái bẫy lớn nhất là interactive transaction giữ connection và lock cho tới khi callback chạy xong, nên mình tuyệt đối không đặt I/O chậm như gọi API ngoài hay gửi mail vào trong đó — mấy việc đó mình đẩy ra BullMQ chạy sau khi commit. Mình cũng set maxWait và timeout hợp lý để tránh transaction treo giữ lock quá lâu gây deadlock."
+
+---
+
 - `$transaction` gom nhiều query vào một transaction DB: tất cả commit, hoặc rollback toàn bộ nếu lỗi.
 - ACID đảm bảo ở tầng DB (Postgres); Prisma chỉ mở `BEGIN/COMMIT/ROLLBACK`: Atomicity, Consistency, Isolation, Durability.
 - Hai dạng: *sequential* `$transaction([q1, q2])` (chạy tuần tự, không chèn JS) và *interactive* `$transaction(async tx => {...})` (cho phép logic giữa các bước).
@@ -1707,6 +1745,12 @@ await prisma.$transaction(
 
 <details>
 <summary><b>19.6 Index là gì? Phân biệt B-tree, composite, unique và partial index?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Index là cấu trúc dữ liệu phụ giúp DB tìm row nhanh thay vì phải quét cả bảng. Loại mặc định và dùng nhiều nhất là B-tree, hợp cho so sánh bằng, range như lớn hơn/nhỏ hơn/BETWEEN và cả ORDER BY. Composite index là index trên nhiều cột, ví dụ (project_id, created_at), nhưng phải nhớ left-prefix rule: nó dùng được khi mình lọc theo project_id hoặc project_id cộng created_at, còn nếu chỉ lọc mỗi created_at thì gần như vô dụng — nên thứ tự cột rất quan trọng. Unique index thì vừa tăng tốc tìm kiếm vừa enforce tính duy nhất, thực ra Postgres dùng chính unique index để thực thi unique constraint. Partial index chỉ index tập con thỏa điều kiện WHERE nên nhỏ và ghi nhanh hơn. Trong Jira Clone mình tạo composite index (project_id, created_at DESC) để list issue trong một board sắp theo ngày cho nhanh, và dùng partial index WHERE deleted_at IS NULL để chỉ index issue chưa bị soft-delete. Đánh đổi cần nhớ là index làm đọc nhanh nhưng ghi chậm hơn và tốn dung lượng, nên mình chỉ tạo index bám theo query thực tế chứ không tạo bừa."
+
+---
 
 - Index: cấu trúc phụ giúp tìm row nhanh thay vì quét toàn bảng.
 - B-tree (mặc định): tối ưu `=`, range `<,>,BETWEEN`, hỗ trợ `ORDER BY`.
@@ -2284,6 +2328,12 @@ if (attempts === 1) await redis.expire(`login:attempts:${userId}`, 900);
 <details>
 <summary><b>23.3 Caching với Redis: giải thích cache-aside và các chiến lược invalidation?</b></summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Cache-aside, hay còn gọi lazy loading, là pattern mình hay dùng nhất với Redis: khi đọc thì check cache trước, nếu hit thì trả luôn, nếu miss thì query DB rồi ghi kết quả vào cache kèm TTL. Điểm cốt lõi là app tự quản lý cache còn DB vẫn là source of truth. Về invalidation thì có vài cách: đơn giản nhất là để TTL tự hết hạn nếu chấp nhận dữ liệu stale một chút; chủ động hơn là explicit delete key mỗi khi ghi; hoặc write-through ghi cả DB lẫn cache cùng lúc. Một quy tắc mình luôn theo là xóa key an toàn hơn update cache trực tiếp, vì update dễ dính race condition khiến giá trị cũ đè lên giá trị mới — và thứ tự đúng là update DB trước rồi mới del cache. Trong Jira Clone mình cache thông tin project và board vì chúng đọc nhiều ghi ít, mỗi lần update project là mình del key project:{id} ngay. Cuối cùng cần lưu ý cache stampede: khi một key hot hết hạn cùng lúc, hàng loạt request cùng miss và đập thẳng vào DB — mình xử lý bằng lock single-flight hoặc stale-while-revalidate để chỉ một request đi rebuild cache."
+
+---
+
 - **Cache-aside** (lazy loading): đọc cache trước; **miss** -> query DB rồi ghi lại cache với TTL; **hit** -> trả luôn. App quản lý cache, DB là source of truth.
 - Invalidation: (1) TTL (chấp nhận stale ngắn); (2) explicit delete khi ghi; (3) write-through (ghi DB + cache cùng lúc); (4) event-based (invalidate phân tán).
 - Quy tắc vàng: **xóa key an toàn hơn update cache trực tiếp** (tránh race ghi giá trị cũ đè lên). Thứ tự: update DB trước rồi del cache.
@@ -2405,12 +2455,111 @@ ThrottlerModule.forRootAsync({
 
 </details>
 
+<details>
+<summary><b>23.9 Các microservice giao tiếp với nhau bằng cách nào? So sánh REST, gRPC và Message Queue (đồng bộ vs bất đồng bộ), khi nào dùng cái nào?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình chia giao tiếp giữa service ra làm hai nhóm. Nhóm đồng bộ là khi caller phải chờ response để đi tiếp, gồm REST và gRPC — mình dùng khi bên gọi thật sự cần dữ liệu trả về ngay, ví dụ Issue service gọi Auth service để verify token rồi mới cho tạo issue. REST hợp cho API public, dễ debug, ai cũng đọc được; còn gRPC mình ưu tiên cho giao tiếp nội bộ service-to-service vì nó dùng HTTP/2 + Protobuf nên nhanh hơn, payload nhỏ, có contract chặt và hỗ trợ streaming. Nhóm bất đồng bộ là Message Queue / event — caller chỉ bắn message rồi trả response luôn, không chờ; mình dùng cho tác vụ không cần kết quả tức thì hoặc cần tách rời (decouple) service. Trong Jira Clone, khi assign một issue thì mình không gọi thẳng notification service mà push event vào BullMQ (chạy trên Redis), một worker riêng tiêu thụ để gửi email và đẩy realtime qua Socket.IO. Cái lợi lớn nhất của async là decoupling và khả năng chịu tải: nếu mail server hay notification service chết thì việc tạo issue vẫn thành công, message nằm trong queue retry sau, không kéo sập request chính. Đánh đổi là độ phức tạp tăng — đồng bộ thì lỗi lộ ra ngay và dễ trace, còn bất đồng bộ là eventual consistency, queue thường at-least-once nên consumer bắt buộc phải idempotent. Quy tắc của mình: cần câu trả lời ngay thì đồng bộ (gRPC cho internal, REST cho ngoài), còn fire-and-forget hoặc fan-out nhiều bên thì dùng queue/event."
+
+---
+
+- **Đồng bộ (request/response, caller chờ):** REST và gRPC — phù hợp khi cần kết quả ngay để xử lý tiếp (verify token, query data). Lỗi lộ ngay, dễ trace; nhưng caller bị **coupling** tạm thời (callee chết -> caller fail/chậm).
+- **REST/HTTP+JSON:** chuẩn nhất quán, dễ debug (curl/Postman), hợp **API public** và client đa dạng. Đổi lại: payload lớn (text JSON), không có contract bắt buộc, không stream tốt.
+- **gRPC (HTTP/2 + Protobuf):** nhanh, payload nhị phân nhỏ, **contract chặt** (.proto), hỗ trợ streaming hai chiều -> hợp **internal service-to-service** tải cao. NestJS có sẵn microservice transport gRPC. Đổi lại: khó debug bằng mắt, browser không gọi trực tiếp được.
+- **Bất đồng bộ (Message Queue / event, caller không chờ):** producer bắn message rồi trả ngay; consumer xử lý sau. Lợi: **decoupling**, hấp thụ burst, retry/backoff, scale worker độc lập, **fan-out** một event tới nhiều consumer.
+- **Khi nào dùng async:** việc nặng/chậm (gửi email, export, xử lý ảnh), không cần kết quả tức thì, hoặc cần tách rời để service chính không sập theo downstream.
+- **Đánh đổi async:** **eventual consistency**, khó trace (cần correlation id), queue at-least-once -> consumer phải **idempotent**, phải xử lý dead-letter cho job fail mãi.
+- **Quy tắc chọn:** cần trả lời ngay -> đồng bộ (gRPC internal, REST public); fire-and-forget / nhiều bên cùng nghe / chịu tải cao -> queue/event.
+- **Ví dụ Jira Clone:** verify quyền khi tạo issue = đồng bộ; assign issue -> push event vào **BullMQ (Redis)** -> worker gửi email + bắn **Socket.IO** realtime = bất đồng bộ.
+
+```
+ĐỒNG BỘ (chờ kết quả)                 BẤT ĐỒNG BỘ (fire-and-forget / fan-out)
+Issue ──gRPC──▶ Auth (verify token)   Issue ──event──▶ [ BullMQ / Redis ]
+       ◀──── ok/deny ────                                    │
+(caller blocked tới khi có response)        ┌───────────────┼───────────────┐
+                                            ▼               ▼               ▼
+                                       Email worker   Socket.IO push   Audit log
+                                  (retry+backoff, idempotent, eventual consistency)
+
+// Producer: bắn event rồi trả response ngay, KHÔNG chờ consumer
+await this.notifyQueue.add('issue.assigned', { issueId, assigneeId },
+  { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+return issue; // tạo issue thành công dù notification service đang chết
+```
+
+</details>
+
+<details>
+<summary><b>23.10 Kafka khác RabbitMQ thế nào? Khi nào chọn message queue (RabbitMQ/BullMQ), khi nào chọn event streaming (Kafka)?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình phân biệt theo mô hình lưu trữ: RabbitMQ/BullMQ là *queue* — message được consume xong là xóa khỏi queue, hợp với việc phân phối *task* cho worker; còn Kafka là *distributed log* — event được append vào partition và giữ theo retention (vài ngày/tuần), consumer chỉ tua offset chứ không xóa, nên nhiều nhóm consumer độc lập đọc cùng một stream và có thể *replay* lịch sử. Vì thế khi mình cần chạy một tác vụ nền có retry/backoff như gửi OTP, export CSV, xử lý ảnh thì mình chọn message queue — trong Jira Clone mình dùng BullMQ trên Redis cho đúng nhóm này, mỗi job làm đúng một lần rồi biến mất. Còn khi một sự kiện như `issue.updated` cần fan-out tới nhiều consumer khác nhau (cập nhật search index, bắn analytics, gửi notification) hoặc mình muốn replay để rebuild read-model thì mình nghiêng về Kafka. Về ordering, Kafka đảm bảo thứ tự *trong một partition* (key cùng partition mới giữ thứ tự), còn RabbitMQ chỉ giữ FIFO khi một queue một consumer. Cả hai về cơ bản là at-least-once nên consumer của mình luôn phải idempotent, vì một message có thể được giao lại. Tóm lại mình hỏi: đây là 'giao việc cho worker rồi quên đi' (queue) hay 'dòng sự kiện cần nhiều người đọc và xem lại' (Kafka)?"
+
+---
+
+- **Queue (RabbitMQ/BullMQ)**: message consume xong là **xóa**, một message thường tới *một* worker. Hợp **task/job**: email, OTP, export, image processing — cần retry/backoff, concurrency control.
+- **Log (Kafka)**: event **append-only**, giữ theo **retention**, consumer chỉ tua **offset** → nhiều consumer group đọc cùng stream độc lập, **replay** được. Hợp **event streaming/fan-out, audit, rebuild read-model, analytics**.
+- **Consumer group**: Kafka chia partition cho các consumer trong cùng group (mỗi partition → 1 consumer/group) để scale; group *khác nhau* đọc lại toàn bộ stream → đó là điểm RabbitMQ không có sẵn theo kiểu log.
+- **Ordering**: Kafka chỉ đảm bảo thứ tự **trong 1 partition** (dùng key để route, vd `issueId`); RabbitMQ FIFO khi 1 queue + 1 consumer, nhiều consumer thì mất thứ tự.
+- **Throughput vs routing**: Kafka tối ưu **throughput cao + lưu lâu**; RabbitMQ mạnh về **routing linh hoạt** (exchange/binding, topic, RPC) và độ trễ thấp cho từng message.
+- **Cả hai at-least-once** → consumer phải **idempotent**; "exactly-once" thực tế = at-least-once + khử trùng lặp ở phía consumer.
+- Quy tắc chọn: "giao việc cho worker rồi quên" → **queue**; "dòng sự kiện cần nhiều bên đọc / xem lại / số lượng lớn" → **Kafka**. Tránh dùng Kafka làm task queue chỉ vì nghe oách (mất retry per-message tiện lợi, vận hành nặng hơn).
+
+```
+# Queue: 1 message -> 1 worker, consume xong là xóa
+[producer] -> ( email-queue ) -> [worker]    # BullMQ: gửi OTP, retry/backoff
+
+# Log: event giữ lại, nhiều group tua offset độc lập + replay được
+                         ┌─ group: search-indexer  (offset 42)
+[producer] -> issue-topic┤─ group: notifications   (offset 39)
+   (key=issueId,giữ      └─ group: analytics        (offset 12)  <- có thể seek về 0 để replay
+    thứ tự trong partition)
+```
+
+</details>
+
+<details>
+<summary><b>23.11 Đưa hệ thống từ 1.000 lên 1.000.000 user: trình bày lộ trình scale và các nút thắt thường gặp?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình sẽ scale theo từng bước thực tế chứ không over-engineer ngay từ đầu. Giai đoạn đầu mình ưu tiên **vertical scaling** (tăng RAM/CPU) vì rẻ và nhanh, nhưng nó có trần và là single point of failure, nên sớm chuyển sang **horizontal scaling**: đặt một **Load Balancer** phía trước rồi chạy nhiều instance app. Để scale ngang được thì app bắt buộc **stateless** — mình đẩy session, rate-limit counter, cache ra Redis, file lên S3; trong Jira Clone mình đã làm điều này, kèm Socket.IO dùng Redis adapter để các instance cùng nhận realtime event. Khi DB thành nút thắt thì thường **đọc nặng hơn ghi**, nên mình thêm **read replica** và route write về primary, read về replica (lưu ý replication lag gây read-your-write); chỉ khi một bảng quá lớn, ghi không kham nổi mới tính tới **sharding** vì nó phức tạp và mất join/transaction xuyên shard. Song song mình thêm **cache Redis** (cache-aside cho board/issue hay đọc), tách việc nặng như gửi email, export, notification sang **queue BullMQ** để API trả nhanh, và đẩy ảnh/asset tĩnh qua **CDN** để giảm tải gốc. Theo kinh nghiệm, nút thắt cuối cùng gần như luôn là **database** — đặc biệt connection pool cạn khi nhiều instance, nên mình đặt **PgBouncer** ở giữa; quan trọng nhất là phải đo bằng metrics/load test để biết nghẽn ở đâu rồi mới scale đúng chỗ."
+
+---
+
+- **Vertical trước, horizontal sau**: tăng CPU/RAM nhanh-rẻ nhưng có trần + là SPOF; horizontal (nhiều instance sau Load Balancer) mới scale gần như vô hạn và có HA.
+- **App phải stateless** để scale ngang: state chia sẻ ra Redis (session, cache, rate-limit), file lên S3; realtime (Socket.IO) cần Redis adapter để các instance đồng bộ.
+- **DB read replica** khi đọc >> ghi: write -> primary, read -> replica; coi chừng **replication lag** (read-your-write). **Sharding** là phương án cuối, chỉ khi write/dung lượng vượt 1 node — mất join & transaction xuyên shard.
+- **Cache (Redis)** cho dữ liệu đọc nhiều; **Queue (BullMQ)** tách việc nặng/async để API trả nhanh; **CDN** cho static asset & file.
+- **Nút thắt thường gặp**: DB (connection pool cạn -> dùng **PgBouncer**), N+1 query, cache stampede, hot partition khi shard lệch key. Nguyên tắc: **đo trước (metrics + load test) rồi mới scale đúng chỗ**, đừng đoán.
+
+```
+Client -> CDN (static) ┐
+                       ├-> Load Balancer -> [App #1..#N stateless]
+                       │                         │   │   │
+                       │              Redis (cache/session) │
+                       │                     BullMQ <- worker tách riêng
+                       └-------------------> Postgres: primary (write)
+                                                       └ read replica(s) (read)
+                                               (PgBouncer giữa app & DB)
+```
+
+</details>
+
 ---
 
 ## 24. API and REST Design
 
 <details>
 <summary><b>24.1 Trình bày các REST conventions bạn tuân thủ khi đặt tên resource và thiết kế endpoint?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Khi thiết kế API cho Jira Clone, mình bám vào vài quy ước REST cốt lõi. Resource luôn là danh từ số nhiều như `/projects` hay `/issues`, không nhét động từ vào URL vì bản thân HTTP method (GET/POST/PATCH/DELETE) đã nói lên hành động rồi. Quan hệ cha-con thì mình dùng nested route, ví dụ `/projects/:id/issues` để lấy issue của một project, nhưng mình cố không lồng quá 2 cấp — sâu hơn nữa thì tách thành resource độc lập như `/issues/:id` rồi lọc bằng query param cho đỡ rối. Mọi chuyện lọc, sắp xếp, phân trang mình đẩy hết vào query string kiểu `?status=OPEN&sort=-createdAt&limit=20` thay vì đẻ ra path mới. Với những thao tác không map gọn vào CRUD — như chuyển trạng thái issue trên board — mình mô hình hóa thành sub-resource hành động kiểu `POST /issues/:id/transitions`, vì cố ép nó thành PATCH một field trạng thái sẽ giấu mất logic nghiệp vụ phía sau. Cuối cùng mình phân biệt rõ PATCH cho cập nhật một phần và PUT cho thay thế toàn bộ. Cái mình ưu tiên nhất là tính nhất quán: thà chọn một quy ước rồi áp đều toàn hệ thống, còn hơn mỗi endpoint một kiểu khiến frontend phải nhớ ngoại lệ."
+
+---
 
 - Resource là danh từ số nhiều (`/projects`, `/issues`), không dùng verb vì HTTP method đã thể hiện hành động.
 - Quan hệ lồng nhau dùng nested route (`/projects/:id/issues`) nhưng không lồng quá 2 cấp — sâu hơn thì tách resource độc lập + query filter.
@@ -3337,6 +3486,12 @@ git push -u origin feat/issue-comments
 <details>
 <summary><b>31.2 Phân biệt merge, rebase và squash merge? Khi nào dùng cái nào?</b></summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Ba cái này khác nhau ở chỗ chúng định hình lịch sử commit thế nào. Merge commit (`--no-ff`) giữ nguyên toàn bộ commit của feature branch và thêm một merge commit nối lại — lịch sử trung thực nhất nhưng đồ thị rẽ nhánh nhằng nhịt khi nhìn `git log --graph`. Rebase thì phát lại các commit của mình lên đỉnh `main` mới nhất, cho lịch sử thẳng tuyến tính, nhưng nó viết lại hash nên mình tuyệt đối không rebase nhánh người khác đã pull về. Squash merge gộp cả PR thành đúng một commit trên `main`, giúp lịch sử main siêu sạch và revert dễ, đổi lại mất chi tiết từng bước. Trong nhóm làm Jira Clone, quy ước của mình là: dùng rebase để cập nhật branch riêng cho khỏi tụt hậu so với main; dùng squash merge khi gộp PR vào main để mỗi feature là một dòng lịch sử gọn gàng; còn merge `--no-ff` mình để dành cho nhánh release khi cần giữ trọn vết để audit. Một lưu ý mình luôn nhắc: sau rebase phải push bằng `--force-with-lease` chứ không phải `--force`, vì nó sẽ từ chối nếu remote có commit mới mình chưa thấy, tránh ghi đè nhầm lên việc của đồng đội."
+
+---
+
 - **Merge commit** (`--no-ff`): giữ trọn commit feature + 1 merge commit; lịch sử trung thực nhưng đồ thị rẽ nhánh nhiều.
 - **Rebase**: phát lại commit lên đỉnh `main`, lịch sử thẳng tuyến tính; **viết lại hash** → không rebase nhánh người khác đã pull.
 - **Squash merge**: gộp cả PR thành 1 commit trên `main`; `main` sạch, dễ revert, nhưng mất lịch sử chi tiết.
@@ -3473,6 +3628,12 @@ deploy-prod:
 
 <details>
 <summary><b>32.2 Một pipeline CI cho service NestJS nên gồm những giai đoạn nào và thứ tự ra sao? Vì sao thứ tự đó quan trọng?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Nguyên tắc xương sống của mình khi sắp xếp pipeline là fail fast: bước nào rẻ và nhanh thì đẩy lên trước để phản hồi sớm, không phí phút runner cho commit chắc chắn hỏng. Với service NestJS mình thường xếp theo thứ tự: install dependencies với `--frozen-lockfile`, rồi lint/format, rồi type-check và build bằng `tsc --noEmit`, sau đó unit test, tiếp đến integration/e2e (phần này cần một Postgres chạy dưới dạng service container), rồi mới build Docker image, và cuối cùng deploy. Thứ tự này quan trọng vì nếu mình build Docker — vốn tốn vài phút — trước cả lint vài giây, thì một lỗi format vớ vẩn cũng bắt mình chờ cả phút build mới biết, rất phí. Một cái bẫy mình từng dính là quên `--frozen-lockfile`: CI tự cập nhật lockfile, thế là 'chạy được trên CI nhưng khác với máy dev', nên giờ mình luôn bắt buộc frozen trong pipeline. Riêng e2e của Jira Clone mình còn chạy `prisma migrate deploy` trên DB container trước khi test để schema khớp với code."
+
+---
 
 - Nguyên tắc **fail fast**: đặt bước rẻ/nhanh lên trước để phản hồi sớm, không tốn phút runner cho commit chắc chắn hỏng.
 - Thứ tự: Install (`--frozen-lockfile`) → Lint/format → Type check/build (`tsc --noEmit`) → Unit test → Integration/e2e (cần DB qua service container) → Build Docker image → Deploy.
@@ -3633,6 +3794,41 @@ ready() { return this.health.check([
 ```bash
 gcloud run services update-traffic api --to-revisions=api-00042-abc=100
 kubectl rollout undo deployment/api
+```
+
+</details>
+
+<details>
+<summary><b>32.15 Kubernetes giải quyết vấn đề gì? Pod/Deployment/Service/Ingress là gì, và khi nào THỰC SỰ cần K8s thay vì Docker Compose hoặc PaaS (Cloud Run/ECS)?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình nhìn Kubernetes như một bộ điều phối (orchestrator) cho container khi chạy nhiều service trên nhiều máy: nó lo việc tự khởi động lại container chết, scale theo tải, rolling update không downtime, service discovery và self-healing — những việc mà nếu chỉ có Docker thì mình phải tự dựng thủ công. Bốn khái niệm cốt lõi mình hay nói là: Pod là đơn vị chạy nhỏ nhất (một hoặc vài container dùng chung network/volume); Deployment quản lý số replica của Pod và lo rolling update/rollback; Service là một virtual IP + DNS ổn định để load-balance tới các Pod (vì Pod sinh/diệt liên tục, IP thay đổi); còn Ingress là lớp định tuyến HTTP từ ngoài vào, xử lý host/path routing và TLS. Điểm mình muốn nhấn mạnh trong phỏng vấn là đừng vẽ phức tạp quá mức: với dự án Jira Clone của mình — một API NestJS, Postgres, Redis, vài worker BullMQ và Socket.IO — mình deploy lên Cloud Run hoặc ECS Fargate là quá đủ, vì nền tảng đã lo scale, health check và rolling deploy hộ mình rồi. Mình chỉ thực sự cần K8s khi có nhiều chục microservice, cần kiểm soát sâu networking/scheduling, multi-cloud hoặc on-prem, hoặc cần các thứ như service mesh, autoscaling phức tạp. Đánh đổi của K8s là chi phí vận hành rất lớn: phải lo control plane, RBAC, networking, monitoring — nên mình chỉ trả 'thuế' đó khi quy mô và yêu cầu thật sự đòi hỏi, còn lại Docker Compose cho local và PaaS cho prod là lựa chọn pragmatic hơn."
+
+---
+
+- **K8s giải quyết gì**: orchestration container trên *cụm nhiều node* — self-healing (restart Pod chết), scale, rolling update/rollback, service discovery, declarative state (mô tả "trạng thái mong muốn", K8s tự hội tụ về đó).
+- **Pod**: đơn vị deploy nhỏ nhất; 1+ container *dùng chung* network namespace và volume. Pod là **ephemeral** — chết là tạo Pod mới với IP khác.
+- **Deployment**: quản lý ReplicaSet → giữ đúng số replica, lo **rolling update** và **rollback**. Không deploy Pod trần ở prod.
+- **Service**: virtual IP + DNS *ổn định*, load-balance tới các Pod theo label selector → giải bài toán Pod IP thay đổi liên tục. (ClusterIP nội bộ, NodePort/LoadBalancer ra ngoài.)
+- **Ingress**: router HTTP(S) lớp 7 — host/path routing + TLS termination, một entrypoint cho nhiều Service (cần Ingress Controller như nginx/Traefik).
+- **Khi nào DÙNG K8s**: nhiều chục service, cần kiểm soát sâu network/scheduling, multi-cloud/on-prem, service mesh, autoscaling phức tạp, đã có đội DevOps.
+- **Khi nào KHÔNG cần (Jira Clone)**: vài service → **Docker Compose** cho local/dev, **Cloud Run / ECS Fargate** cho prod đã lo scale + health check + rolling deploy. Đừng "over-engineer".
+- **Đánh đổi**: K8s = sức mạnh + linh hoạt, nhưng **chi phí vận hành cao** (control plane, RBAC, networking, observability). Chỉ trả "thuế" này khi quy mô thật sự cần.
+
+```
+Ngoài Internet
+   │  HTTPS (jira.example.com)
+   ▼
+[Ingress]  ── host/path routing + TLS
+   │
+   ▼
+[Service api]  ── DNS ổn định + load-balance
+   │      selector: app=api
+   ├──► [Pod] NestJS  (Deployment, replicas=3, rolling update)
+   ├──► [Pod] NestJS
+   └──► [Pod] NestJS
+# Postgres/Redis thường để ngoài cụm (managed RDS/MemoryStore) cho gọn
 ```
 
 </details>
@@ -4173,6 +4369,12 @@ SELECT * FROM issue WHERE project_id = 1 ORDER BY created_at DESC LIMIT 20;
 <details>
 <summary><b>34.20 SQL vs NoSQL: chọn dựa trên tiêu chí nào?</b></summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Mình không chọn theo kiểu 'NoSQL nhanh hơn' mà chọn dựa trên access pattern và mức nhất quán nghiệp vụ cần. SQL quan hệ mạnh ở chỗ schema chặt, JOIN tốt, và transaction ACID xuyên nhiều bảng — rất hợp với dữ liệu quan hệ chặt và cần consistency cao. Jira Clone của mình là ví dụ điển hình: project, issue, user, comment ràng buộc lẫn nhau, và khi kéo-thả issue trên board mình cần cập nhật trạng thái cùng vài bảng liên quan trong một transaction, nên Postgres là lựa chọn tự nhiên. NoSQL — document, key-value hay wide-column — thắng khi schema cần linh hoạt, scale ngang dễ, và mình chủ yếu đọc/ghi theo một aggregate độc lập với throughput lớn, như log, event hay catalog. Đánh đổi là mình phải tự lo consistency và JOIN ở tầng ứng dụng. Quan điểm của mình là phần lớn app nên khởi đầu bằng Postgres, vì nó còn có `jsonb` để chứa phần dữ liệu linh hoạt, và chỉ thêm NoSQL khi có nhu cầu thật rõ ràng về scale hay đặc thù truy cập — chẳng hạn nếu cần lưu activity feed khổng lồ thì mình mới cân nhắc tách riêng."
+
+---
+
 - **SQL (quan hệ)**: schema chặt, **JOIN** mạnh, **transaction ACID** đa bảng, truy vấn linh hoạt ad-hoc → hợp dữ liệu **quan hệ chặt, tính nhất quán cao** (đa số nghiệp vụ như Jira: project–issue–user–comment).
 - **NoSQL** (document/key-value/wide-column): schema linh hoạt, scale ngang dễ, đọc/ghi theo **một aggregate** rất nhanh → hợp dữ liệu **phi quan hệ, throughput lớn, hình dạng đa dạng** (log, event, catalog).
 - Đừng chọn theo "hot tech": phần lớn app khởi đầu **nên dùng Postgres** (có cả `jsonb` cho phần linh hoạt); chỉ thêm NoSQL khi có nhu cầu rõ (scale/đặc thù truy cập). Chi tiết MongoDB ở [Phần 30](#30-mongodb-và-mongoose-nosql).
@@ -4213,6 +4415,54 @@ SELECT i.project_id, SUM(i.story_points)
 FROM issue i JOIN comment c ON c.issue_id = i.id
 GROUP BY i.project_id;
 -- Dung: tong hop comment rieng, hoac SUM(DISTINCT...)/subquery
+```
+
+</details>
+
+<details>
+<summary><b>34.23 Khi nhận một feature mới (vd "comment + mention"), bạn thiết kế schema theo các bước nào? Khi nào và làm sao DENORMALIZE an toàn?</b></summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình bắt đầu từ access pattern chứ không bắt đầu từ bảng: feature này sẽ ĐỌC/GHI gì, ai sở hữu dữ liệu, query nào chạy nóng nhất. Với comment + mention trong Jira Clone, mình xác định các thực thể (`comment` thuộc `issue`, `mention` nối `comment` với `user`), chọn quan hệ và khóa — một issue có nhiều comment (1-n, FK `issue_id` đặt ở bảng `comment`), một comment mention nhiều user nên tách bảng nối `comment_mention` (n-n) để giữ 3NF thay vì nhồi mảng `user_ids` vào một cột. Sau đó mình chốt constraint và index theo đúng truy vấn thật: `ON DELETE CASCADE` để xóa issue thì comment đi theo, index trên `(issue_id, created_at)` vì màn chi tiết issue luôn load comment theo thời gian. Mặc định mình giữ schema chuẩn hóa, chỉ denormalize khi có bằng chứng query đọc bị chậm. Ví dụ badge `comment_count` trên issue: nếu mỗi lần render board mà `COUNT(*)` từng issue thì rất tốn, nên mình lưu sẵn cột đếm. Cái giá phải trả là phải giữ đồng bộ, và mình giữ an toàn bằng cách cập nhật count CHUNG transaction với insert/delete comment (tăng/giảm atomic), chứ không update rời rạc dễ lệch; còn việc bắn notification cho người được mention thì mình đẩy ra BullMQ để không khóa request ghi. Nguyên tắc của mình là: chuẩn hóa trước, denormalize sau khi đo, và mọi bản sao dữ liệu đều phải có MỘT nguồn cập nhật atomic — thường là DB transaction hoặc trigger."
+
+---
+
+- Trình tự: (1) liệt kê **access pattern** (đọc/ghi nào nóng) → (2) xác định **entity & quan hệ** (1-n, n-n) → (3) chọn **khóa + constraint** (PK/FK, `UNIQUE`, `ON DELETE`) → (4) **index theo query thật** → (5) cân nhắc denormalize sau khi đo.
+- Giữ **3NF mặc định**: n-n (comment ↔ user mention) tách **bảng nối**, không nhồi mảng/CSV vào một cột.
+- **Denormalize khi nào**: chỉ khi đọc chứng minh là chậm/nóng (vd `comment_count` để khỏi `COUNT(*)` mỗi lần render board) — đánh đổi: **đọc nhanh, ghi phức tạp hơn + nguy cơ lệch dữ liệu**.
+- **Denormalize an toàn**: cập nhật bản sao **cùng transaction** với thao tác gốc (atomic), hoặc dùng **DB trigger**; tránh update hai chỗ ở hai nơi khác nhau.
+- Source of truth vẫn là bảng gốc; cột denormalized chỉ là **cache** — phải có cách **rebuild lại** được (job recompute) khi nghi lệch.
+- Việc phụ (notify người được mention) tách ra **async (BullMQ)** — không nhét vào critical path của ghi comment.
+
+```sql
+-- Chuan hoa: comment 1-n issue, mention n-n qua bang noi
+CREATE TABLE comment (
+  id uuid PRIMARY KEY,
+  issue_id uuid NOT NULL REFERENCES issue(id) ON DELETE CASCADE,
+  author_id uuid NOT NULL REFERENCES "user"(id),
+  body text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_comment_issue_time ON comment (issue_id, created_at);
+
+CREATE TABLE comment_mention (
+  comment_id uuid REFERENCES comment(id) ON DELETE CASCADE,
+  user_id    uuid REFERENCES "user"(id),
+  PRIMARY KEY (comment_id, user_id)
+);
+```
+
+```ts
+// Denormalize an toan: tang comment_count CUNG transaction voi insert
+await prisma.$transaction([
+  prisma.comment.create({ data: { issueId, authorId, body } }),
+  prisma.issue.update({
+    where: { id: issueId },
+    data: { commentCount: { increment: 1 } }, // atomic, khong bi lech
+  }),
+]);
+// Notify nguoi duoc mention -> day ra BullMQ, ngoai critical path
 ```
 
 </details>

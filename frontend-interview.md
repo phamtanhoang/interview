@@ -963,6 +963,12 @@ async function handleAsync() {
 <details>
 <summary>👉 Gợi ý trả lời (STAR)</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Ở dự án Jira Clone, board kéo-thả bắt đầu giật rõ khi một sprint có vài trăm issue, và gõ vào ô tìm kiếm thì trễ thấy được. Việc đầu tiên mình làm là đo chứ không đoán: mở React Profiler, bật 'record why each component rendered', và phát hiện mỗi lần gõ một ký tự là toàn bộ các cột và card đều re-render. Truy ra gốc, hóa ra state tìm kiếm đặt ở component cha cao nhất, lại truyền qua Context với một object value mới mỗi render, cộng với Card nhận handler inline nên React.memo cũng vô dụng. Mình xử lý đúng gốc: colocate state tìm kiếm xuống gần nơi dùng, memo hóa value và tách Context dispatch riêng, bọc Card bằng React.memo với onClick qua useCallback; với danh sách dài thì thêm virtualization bằng @tanstack/react-virtual và bọc phần lọc trong useTransition để giữ ô input mượt. Kết quả là số component render mỗi lần gõ giảm từ hàng trăm xuống còn vài chục, thời gian commit giảm hẳn và board hết giật. Bài học mình luôn nhấn là đo trước khi sửa, sửa đúng nguyên nhân rồi đo lại để xác nhận, chứ không rải useMemo khắp nơi cho yên tâm."
+
+---
+
 Câu hỏi hành vi — kể câu chuyện cụ thể, có số liệu, theo STAR:
 
 - **Situation:** "Dự án Jira Clone, board kéo-thả bị giật khi sprint có vài trăm issue; gõ vào ô tìm kiếm trễ rõ rệt."
@@ -1301,6 +1307,12 @@ App lớn cần devtools?   -> Redux Toolkit
 <details>
 <summary>👉 Gợi ý trả lời (STAR)</summary>
 
+**📌 Câu trả lời mẫu:**
+
+"Mình từng refactor state cho một admin dashboard mà ban đầu nhét mọi thứ vào Redux, kể cả data lấy từ API. Mỗi màn lại tự viết fetchStart/Success/Failure, tự quản loading và cache, nên code phình to và đặc biệt hay dính bug dữ liệu cũ: hai màn dùng chung một list nhưng không màn nào tự đồng bộ với màn kia. Mục tiêu của mình là giảm boilerplate và xử lý triệt để chuyện dữ liệu lệch nhau, nhưng không được phá tính năng đang chạy. Cách tiếp cận là tách bạch server state và client state: phần data API mình chuyển sang TanStack Query với queryKey thống nhất, và sau mỗi mutation thì gọi invalidateQueries để mọi màn liên quan tự làm mới; phần client state nhỏ còn lại như modal hay wizard thì mình đưa sang Zustand dùng selector và bỏ hẳn Redux. Mình làm từng module một, viết test cho luồng quan trọng trước khi gỡ code cũ để an toàn. Kết quả là lượng code quản lý data giảm đáng kể, hết hẳn bug dữ liệu cũ vì giờ chỉ còn một cơ chế invalidation duy nhất, UX cũng nhanh hơn nhờ caching và background refetch, và đồng đội thêm màn mới nhanh hơn vì pattern đã rõ ràng. Điều mình muốn nhấn là quyết định dựa trên lý do kỹ thuật là tách server/client state, chứ không phải chỉ đổi thư viện cho mới."
+
+---
+
 Câu hỏi hành vi — dùng cấu trúc STAR. Mẫu trả lời điều chỉnh theo trải nghiệm thật:
 
 - **Situation**: admin dashboard dùng Redux cho mọi thứ kể cả data API; mỗi màn tự viết `fetchStart/Success/Failure`, tự quản loading/cache. Code phình to, bug dữ liệu cũ vì hai màn dùng chung list nhưng không đồng bộ.
@@ -1481,6 +1493,12 @@ const Button = styled.button<{ $primary?: boolean }>`...`; // styled
 
 <details>
 <summary>👉 Gợi ý trả lời (STAR)</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Khi chọn thư viện mình đi theo một bộ tiêu chí có hệ thống chứ không chạy theo trend. Đầu tiên là hỏi liệu có thật sự cần thư viện không, vì thêm một dependency là thêm chi phí bảo trì và rủi ro; nhiều bài toán dùng đồ có sẵn của React là đủ. Tiếp theo mình xét mức độ phù hợp với bài toán, ví dụ ở dự án Jira Clone khi cần quản lý server state của board và issue thì mình chọn TanStack Query thay vì nhồi vào Redux, vì server state cần caching, dedupe và invalidation mà client state không cần. Sau đó mình nhìn sức khỏe dự án: maintainer còn active không, tần suất release, issue tồn đọng, commit gần nhất; rồi đến cộng đồng và tài liệu, bundle size, và chất lượng TypeScript/DX. Cuối cùng là độ tương thích với stack hiện tại và chi phí migration cũng như nguy cơ lock-in. Với những lựa chọn lớn mình thường làm một POC nhỏ để có dữ liệu thật trước khi cam kết, rồi trình bày trade-off cho team để cả nhóm cùng quyết. Tinh thần chung là ưu tiên giải pháp đơn giản nhất giải quyết được bài toán, và quyết định dựa trên dữ liệu chứ không phải cảm tính."
+
+---
 
 - **Situation**: team cần chọn giải pháp quản lý server state cho dashboard đang phình to, đang fetch rải rác trong `useEffect`, khó cache.
 - **Task**: đánh giá và đề xuất thư viện (vd TanStack Query vs RTK Query vs tự viết), thuyết phục team.
@@ -2010,6 +2028,12 @@ body { background: var(--bg); color: var(--text); }
 
 <details>
 <summary>👉 Gợi ý trả lời (STAR)</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Mình từng gặp đúng kiểu tình huống này trên một dự án Next.js: sau khi release landing page, QA báo mobile bị cuộn ngang lạ và một tooltip trong bảng dữ liệu bị cắt mất nửa. Mình tách thành hai vấn đề và xử lý từng cái theo hướng tìm gốc. Với cuộn ngang, mình dùng mẹo khoanh vùng bằng cách thêm tạm `* { outline: 1px solid red }` để nhìn ra phần tử nào tràn ra ngoài, và phát hiện một block đặt `width: 100vw` mà không trừ thanh cuộn và padding của cha; mình đổi sang `100%`, rà lại các đơn vị viewport và xác nhận `box-sizing: border-box` đang áp toàn cục. Với tooltip thì điểm mấu chốt là `z-index` cao bao nhiêu cũng vô dụng, vì wrapper có `transform` cho animation đã tạo ra một stacking context riêng nhốt tooltip lại; mình giải quyết bằng cách render tooltip qua `createPortal` lên thẳng `document.body`. Kết quả là hết cuộn ngang và tooltip hiển thị đủ. Sau đó mình rút ra checklist chia sẻ cho nhóm: cẩn thận với `vw` trên mobile, khi `z-index` không nghe lời thì kiểm tra ngay stacking context, và ưu tiên Portal cho mọi overlay."
+
+---
 
 - **Situation**: Dự án Next.js, sau release landing page, QA báo mobile bị cuộn ngang lạ và tooltip trong bảng dữ liệu bị cắt mất nửa.
 - **Task**: Tìm nguyên nhân gốc cả hai và sửa mà không phá layout các trang khác.
@@ -2694,6 +2718,12 @@ jest.mock('next/navigation', () => ({
 
 <details>
 <summary>👉 Gợi ý trả lời (STAR)</summary>
+
+**📌 Câu trả lời mẫu:**
+
+"Ở một dự án React/Next, CI của tụi mình hay đỏ ngẫu nhiên, khoảng 10-15% build E2E fail không rõ lý do, đến mức cả team mất niềm tin và quen tay bấm 're-run' cho qua. Mình nhận xử lý vì test mà không đáng tin thì coi như không có test. Thay vì re-run, mình ngồi tìm nguyên nhân gốc và lọc ra ba thủ phạm chính: nhiều chỗ chờ cứng bằng setTimeout hoặc cy.wait(2000) nên phụ thuộc tốc độ máy, có chỗ thiếu await trước findBy* gây race condition, và MSW handler bị rò rỉ giữa các test vì quên resetHandlers. Mình thay chờ cứng bằng auto-wait của Playwright cùng findBy*/waitFor, thêm afterEach(resetHandlers) để cô lập test, và bật ESLint rule testing-library/await-async-queries để chặn lỗi thiếu await ngay từ đầu. Song song đó mình soạn một bộ quy ước test cho team: ưu tiên getByRole, không test implementation detail, dùng MSW cho mọi mock, và theo mô hình testing trophy. Kết quả là tỉ lệ flaky E2E từ khoảng 15% xuống dưới 1%, vòng CI nhanh và đáng tin hơn nên team mới dám chặn merge khi test đỏ, và người mới cũng viết test đúng hướng ngay. Điều mình muốn nhấn là chẩn đoán đúng nguyên nhân gốc và dùng công cụ đúng như auto-wait thay vì sleep, với tác động đo được rõ ràng."
+
+---
 
 Trả lời theo **STAR**; thay bằng trải nghiệm thật của bạn.
 
